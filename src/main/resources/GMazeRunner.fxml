@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.text.Text?>
+
+<AnchorPane prefHeight="298.0" prefWidth="360.0" xmlns="http://javafx.com/javafx/8.0.171"
+            xmlns:fx="http://javafx.com/fxml/1" fx:controller="GMazeRunner">
+    <TabPane layoutX="14.0" layoutY="14.0" prefHeight="265.0" prefWidth="342.0" tabClosingPolicy="UNAVAILABLE">
+        <Tab text="Control">
+            <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="195.0" prefWidth="340.0">
+                <CheckBox fx:id="checkTiles" layoutX="31.0" layoutY="143.0" mnemonicParsing="false"
+                          text="Catch Tiles (0)"/>
+                <Button layoutX="219.0" layoutY="131.0" mnemonicParsing="false" onAction="#handleFire"
+                        prefHeight="35.0" prefWidth="61.0" text="Fire"/>
+                <Text fx:id="textCoords" layoutX="44.0" layoutY="65.0" strokeType="OUTSIDE"
+                      strokeWidth="0.0" text="Coords: ( 0, 0 )"/>
+                <Text fx:id="textIndex" layoutX="44.0" layoutY="37.0" strokeType="OUTSIDE" strokeWidth="0.0"
+                      text="Index: -1"/>
+                <CheckBox fx:id="checkGates" layoutX="31.0" layoutY="186.0" mnemonicParsing="false"
+                          text="Catch Gates (0)"/>
+                <Button fx:id="buttonGates" layoutX="202.0" layoutY="178.0" mnemonicParsing="false"
+                        onAction="#handleGates" prefHeight="35.0" prefWidth="95.0" text="Disabled"/>
+                <RadioButton fx:id="radioButtonWalk" layoutX="25.0" layoutY="97.0" mnemonicParsing="false"
+                             selected="true" text="Walk">
+                    <toggleGroup>
+                        <ToggleGroup fx:id="a"/>
+                    </toggleGroup>
+                </RadioButton>
+                <RadioButton fx:id="radioButtonRun" layoutX="105.0" layoutY="97.0" mnemonicParsing="false"
+                             text="Run (Running out of clicks)" toggleGroup="$a"/>
+                <RadioButton fx:id="radioTileAvoid" layoutX="194.0" layoutY="29.0" mnemonicParsing="false"
+                             text="Tile to Avoid"/>
+            </AnchorPane>
+        </Tab>
+        <Tab text="How to Use">
+            <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="239.0" prefWidth="342.0">
+                <TextArea editable="false" layoutX="14.0" layoutY="14.0" prefHeight="221.0"
+                          prefWidth="319.0"
+                          text="Your Index must be different of -1, so in your first time you should restart the room. With the option &quot;Catch Tiles&quot;, you can add tiles to walk or run on. Also with &quot;Catch Gates&quot; you can pass gates automatically, remember press the button to activate. On the other hand, &quot;Tile to Avoid&quot; serves to avoid color tiles, that is, it allows you to pass a section without walking on a color tile. &lt; &lt; Continue reading the Commands section &gt;&gt;"
+                          wrapText="true"/>
+            </AnchorPane>
+        </Tab>
+        <Tab text="Commands">
+            <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+                <Text layoutX="20.0" layoutY="47.0" strokeType="OUTSIDE" strokeWidth="0.0"
+                      text="* &quot;:CoordAvoid&quot;. Allows you to select the box where you want to walk (Tile to Avoid)."
+                      wrappingWidth="325.0"/>
+                <Text layoutX="21.0" layoutY="103.0" strokeType="OUTSIDE" strokeWidth="0.0"
+                      text="* &quot;:DeleteTiles&quot;. Remove all tiles added (Catch Tiles)."
+                      wrappingWidth="300.0"/>
+                <Text layoutX="21.0" layoutY="156.0" strokeType="OUTSIDE" strokeWidth="0.0"
+                      text="* &quot;:DeleteGates&quot;. Remove all gates added (Catch Gates)."
+                      wrappingWidth="300.0"/>
+            </AnchorPane>
+        </Tab>
+        <Tab text="Other">
+            <AnchorPane prefHeight="200.0" prefWidth="200.0">
+                <CheckBox fx:id="checkSwitch" layoutX="106.0" layoutY="55.0" mnemonicParsing="false"
+                          onAction="#handleSwitch" text="Switch Furnis: 0"/>
+                <Text layoutX="34.0" layoutY="119.0" strokeType="OUTSIDE" strokeWidth="0.0"
+                      text="Press the F8 key to give click in the switch"/>
+            </AnchorPane>
+        </Tab>
+    </TabPane>
+</AnchorPane>
