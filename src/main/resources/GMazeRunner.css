@@ -1,0 +1,26 @@
+#imageClose { /* Evita bug, cuando el puntero sale de la imagen */
+    -fx-image: url("/closeButtonDark.png");
+    -fx-padding: 10;
+    -fx-background-color: firebrick;
+}
+#imageClose:hover { /* Cuando el puntero se pasa sobra la imagen (boton cerrar app) */
+    -fx-image: url("closeButtonHover.png");
+    -fx-background-color: #e81123;
+    -fx-cursor: hand; /* Muestra una mano */
+}
+#imageClose:pressed { /* Cuando se presiona la imagen algun efecto deberia pasar */
+    -fx-image: url("closeButtonPressed.png");
+    -fx-background-color: rgba(232, 17, 35, 0.8);
+}
+#imageMinimize {
+    -fx-image: url("/minimizeButtonDark.png");
+}
+
+#imageMinimize:hover {
+    -fx-image: url("minimizeButtonDarkHover.png");
+    -fx-cursor: hand;
+}
+
+#imageMinimize:pressed {
+    -fx-image: url("/minimizeButtonDarkPressed.png");
+}
