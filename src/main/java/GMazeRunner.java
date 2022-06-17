@@ -1,3 +1,7 @@
+/*import com.github.kwhat.jnativehook.GlobalScreen;
+import com.github.kwhat.jnativehook.NativeHookException;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
+import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;*/
 import gearth.extensions.ExtensionForm;
 import gearth.extensions.ExtensionInfo;
 import gearth.extensions.parsers.HEntity;
@@ -18,12 +22,13 @@ import org.jnativehook.NativeHookException;
 import org.jnativehook.keyboard.NativeKeyEvent;
 import org.jnativehook.keyboard.NativeKeyListener;
 import org.json.JSONObject;
-import org.apache.commons.io.IOUtils;       // library important!
+import org.apache.commons.io.IOUtils;       // Important library for use json!
 import org.json.JSONArray;
 import java.net.URL;
 import javax.swing.Timer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.LogManager;
 
 
@@ -45,10 +50,12 @@ import java.util.logging.LogManager;
 
 public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public RadioButton radioButtonWalk, radioButtonRun, radioButtonOff, radioButtonAuto, radioButtonKey;
-    public CheckBox checkSwitch, checkCoords, checkGates, checkWalkToColorTile, checkThrough, checkArrows;
-    public TextField textDelayGates, txtHotKeyGates, txtHotKeySwitches, txtHotKeyUp, txtHotKeyDown, txtHotKeyLeft, txtHotKeyRight;
+    public CheckBox checkSwitch, checkCoords, checkGates, checkWalkToColorTile, checkThrough;
+    public TextField textDelayGates, txtHotKeyGates, txtHotKeySwitches;
     public Text textConnected, textIndex,textCoords;
     public Label labelHotKeyGates, labelSwitches;
+
+    TextInputControl lastInputControl = null;
 
     public HMessage _hMessage;
     public List<HPoint> coordTiles = new LinkedList<>();
@@ -57,8 +64,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public List<ColorTile> listColorTiles = new LinkedList<>();
     public AnchorPane anchorPane;
 
-    // Key, Value
-    TreeMap<Integer,HPoint> floorItemsID_HPoint = new TreeMap<>();
+    TreeMap<Integer,HPoint> floorItemsID_HPoint = new TreeMap<>();      // Key, Value
     TreeMap<String, Integer> nameToTypeidFloor = new TreeMap<>();
 
     public String host;
@@ -73,7 +79,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     private static final Set<String> setGates = new HashSet<>(Arrays.asList("one_way_door*1", "one_way_door*2", "one_way_door*3",
             "one_way_door*4", "one_way_door*5", "one_way_door*6", "one_way_door*7", "one_way_door*8", "one_way_door*9"));
     private static final Set<String> setSwitches = new HashSet<>(Arrays.asList("wf_floor_switch1", "wf_floor_switch2"));
-
     private static TreeMap<String, String> codeToDomainMap = new TreeMap<>();
     static {
         codeToDomainMap.put("br", ".com.br");
@@ -89,25 +94,25 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     Timer timerGate = new Timer(1, e -> passGate());
 
-
     @Override
     public void nativeKeyTyped(NativeKeyEvent nativeKeyEvent) {}
 
     @Override   // Se ejecuta el tiempo que se mantenga presionada la tecla
     public void nativeKeyPressed(NativeKeyEvent nativeKeyEvent) {
         String keyText = NativeKeyEvent.getKeyText(nativeKeyEvent.getKeyCode());
-
-        TextInputControl[] txtFieldsHotKeys = new TextInputControl[]{txtHotKeyGates, txtHotKeySwitches, txtHotKeyUp,
-                                                txtHotKeyDown, txtHotKeyLeft, txtHotKeyRight};
+        TextInputControl[] txtFieldsHotKeys = new TextInputControl[]{txtHotKeyGates, txtHotKeySwitches};
+        /* When the key is released, somehow the loop stops, however it reduces performance and fails sometimes, sorry :/
+        new Thread(() -> { }).start();*/
         for(TextInputControl element: txtFieldsHotKeys){
             if(element.isFocused()){    // si alguno de los controles tiene el control hace algo...
                 element.setText(keyText);
                 if(element.equals(txtHotKeyGates)){
                     Platform.runLater(()-> radioButtonKey.setText(String.format("Key [%s]", keyText)));
                 }
-                if(element.equals(txtHotKeySwitches)){
+                else if(element.equals(txtHotKeySwitches)){
                     Platform.runLater(()-> labelSwitches.setText(String.format("Press key [%s] to give double click in the switch", keyText)));
                 }
+                // lastInputControl = element;
                 Platform.runLater(()-> labelHotKeyGates.requestFocus());    // Le da el foco al label :O
             }
             else if(!element.isFocused()){  // Si ninguno de los elementos tiene el foco...
@@ -117,63 +122,25 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                             try { passGate(); } catch (Exception ignored) { }
                         }
                     }
-                    if(checkArrows.isSelected()){
-                        if(keyText.equals(txtHotKeyUp.getText())){
-                            sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, currentX, currentY - 1));
-                        }
-                        if(keyText.equals(txtHotKeyDown.getText())){
-                            sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, currentX, currentY + 1));
-                        }
-                        if(keyText.equals(txtHotKeyLeft.getText())){
-                            sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, currentX - 1, currentY));
-                        }
-                        if(keyText.equals(txtHotKeyRight.getText())){
-                            sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, currentX + 1, currentY));
-                        }
-                    }
                     if(keyText.equals(txtHotKeySwitches.getText())){
-                        // El orden de seleccion con los interruptores importa si se encuentran pegadas, pero aplicar un delay parece solucionarlo
-                        for(Integer switchId: listSwitches){ // Iterate through Java List
-                            int coordXSwitch = floorItemsID_HPoint.get(switchId).getX();
-                            int coordYSwitch = floorItemsID_HPoint.get(switchId).getY();
-
-                            // ---Case example of coords --- //
-                            // UserCoord (3, 6); SwitchCoord (4, 6) OR UserCoord (5, 6); SwitchCoord (4, 6)
-                            if((currentX == coordXSwitch - 1 && currentY == coordYSwitch) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch)){
-                                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
-                                Delay();
-                            }
-                            // UserCoord (4, 5); SwitchCoord (4, 6) OR UserCoord (4, 7); SwitchCoord (4, 6)
-                            else if((currentX == coordXSwitch && currentY == coordYSwitch - 1) || (currentX == coordXSwitch && currentY == coordYSwitch + 1)){
-                                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
-                                Delay();
-                            }
-                            // UserCoord (3, 5); SwitchCoord (4, 6) OR UserCoord (5, 7); SwitchCoord (4, 6) [LEFT DIAGONAL]
-                            else if((currentX == coordXSwitch - 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch + 1)){
-                                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
-                                Delay();
-                            }
-                            // UserCoord (5, 5); SwitchCoord (4, 6) OR UserCoord (3, 7); SwitchCoord (4, 6) [RIGHT DIAGONAL]
-                            else if((currentX == coordXSwitch + 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch - 1 && currentY == coordYSwitch + 1)){
-                                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
-                                Delay();
-                            }
-                        }
-                    /* Ignore this logic
-                    try {
-                        sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, listSwitches.get(k), 0));
-                        k++;
-                    } catch (IndexOutOfBoundsException ignored){
-                        k = 0;
-                    }*/
+                        handleSwitch();
                     }
                 }
             }
         }
     }
 
-    @Override
-    public void nativeKeyReleased(NativeKeyEvent nativeKeyEvent) {}
+    @Override // Se ejecuta cuando la tecla se deja de presionar
+    public void nativeKeyReleased(NativeKeyEvent nativeKeyEvent) {
+        /* String keyText = NativeKeyEvent.getKeyText(nativeKeyEvent.getKeyCode());
+        TextInputControl[] txtFieldsHotKeys = new TextInputControl[]{txtHotKeyGates, txtHotKeySwitches};
+        for(TextInputControl element: txtFieldsHotKeys) {
+            if(element.equals(lastInputControl)){
+                element.setText(keyText);   lastInputControl = null;
+                break;
+            }
+        } */
+    }
 
     @Override
     protected void onShow() {   // Runs when you opens the extension
@@ -181,7 +148,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         textConnected.setText("Connected to domain: " + codeToDomainMap.get(host));
         radioButtonAuto.setStyle("-fx-text-fill: blue;");
         // textConnected.setFill(Paint.valueOf("BLUE")); // Example: "GREEN" or "#008000"
-
 
         // When its sent, get UserObject packet
         sendToServer(new HPacket("InfoRetrieve", HMessage.Direction.TOSERVER));
@@ -192,8 +158,10 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
         LogManager.getLogManager().reset();
         try {
-            GlobalScreen.registerNativeHook();
-            System.out.println("Hook enabled");
+            if(!GlobalScreen.isNativeHookRegistered()){
+                GlobalScreen.registerNativeHook();
+                System.out.println("Hook enabled");
+            }
         }
         catch (NativeHookException ex) {
             System.err.println("There was a problem registering the native hook.");
@@ -201,19 +169,21 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
             System.exit(1);
         }
-        GlobalScreen.addNativeKeyListener(this);
+        GlobalScreen.addNativeKeyListener(GMazeRunner.this);
     }
 
     @Override
     protected void onHide() {
-        yourIndex = -1;     checkThrough.setSelected(false);    checkArrows.setSelected(false);
+        yourIndex = -1;     checkThrough.setSelected(false);
         sendToClient(new HPacket("YouArePlayingGame", HMessage.Direction.TOCLIENT, checkThrough.isSelected()));
+        //GlobalScreen.removeNativeKeyListener(this);
         try {
             GlobalScreen.unregisterNativeHook();
             System.out.println("Hook disabled");
-        } catch (NativeHookException nativeHookException) {
+        } catch (NativeHookException | RejectedExecutionException nativeHookException) {
             nativeHookException.printStackTrace();
         }
+        GlobalScreen.removeNativeKeyListener(this);
     }
 
     @Override
@@ -227,6 +197,16 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             try { getGameFurniData(); } catch (Exception ignored) { }
             System.out.println("Gamedata Retrieved!");
         });
+
+        /* Cuando pasa el mouse por encima de un elemento, se cambia el color del texto
+        radioButtonAuto.hoverProperty().addListener((observable, oldValue, newValue) -> {
+            if(newValue){
+                radioButtonAuto.setStyle("-fx-text-fill: blue;");
+            }
+            else{
+                radioButtonAuto.setStyle("-fx-text-fill: black;");
+            }
+        });*/
 
         checkThrough.setOnAction(event ->{
             if(checkThrough.isSelected()){
@@ -476,6 +456,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 for (HEntity hEntity: roomUsersList){
                     if(hEntity.getName().equals(yourName)){    // In another room, the index changes
                         yourIndex = hEntity.getIndex();      // The userindex has been restarted
+                        currentX = hEntity.getTile().getX();    currentY = hEntity.getTile().getY();
                         textIndex.setText("Index: " + yourIndex);  // Add UserIndex to GUI
                     }
                     //System.out.println("stuff: " + Arrays.toString(hEntity.getStuff()));
@@ -490,12 +471,13 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 try {
                     int CurrentIndex = hEntityUpdate.getIndex();  // HEntityUpdate class allows get UserIndex
                     if(yourIndex == CurrentIndex){
-                        int jokerX = hEntityUpdate.getTile().getX();    int jokerY = hEntityUpdate.getTile().getY(); // fix bug roller (ignore)
+                        // fix bug roller (important), also update the coords when you entry to the room
+                        int jokerX = hEntityUpdate.getTile().getX();    int jokerY = hEntityUpdate.getTile().getY();
 
                         if(radioButtonWalk.isSelected()){
                             currentX = hEntityUpdate.getTile().getX();  currentY = hEntityUpdate.getTile().getY();
                         }
-                        if(radioButtonRun.isSelected()){
+                        else if(radioButtonRun.isSelected()){
                             currentX = jokerX;  currentY = jokerY;      // fix bug roller, because the coordinate is not updated
                             Platform.runLater(()-> textCoords.setText("Coords: ( " + jokerX + ", " + jokerY + " )"));   // fix bug roller (ignore)
 
@@ -590,11 +572,10 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     public void getGameFurniData() throws Exception{
-        /*  https://www.habbo.es/gamedata/furnidata/68a1492edadcaf02fff3bfe0ddb4cf308e077774 Info organizada como lista []
-            https://www.habbo.es/gamedata/furnidata_json/1 este link redirecciona a
-            https://www.habbo.es/gamedata/furnidata_json/68a1492edadcaf02fff3bfe0ddb4cf308e077774 Info organizado como diccionario {}
-            Por otro lado tu puedes obtener la info como furnidata_xml en vez de furnidata_json
-        */
+        /*  https://www.habbo.es/gamedata/furnidata/1 -> Este link redirecciona a
+            https://www.habbo.es/gamedata/furnidata/4b7d10b21957494413fdf42d51eca53b88bc0e12 -> Info organizado como lista []
+            https://www.habbo.es/gamedata/furnidata_json/1 -> Info organizada como diccionario {}
+            https://www.habbo.es/gamedata/furnidata_xml/1 -> Info organizada como XML <>   */
 
         String str = "https://www.habbo%s/gamedata/furnidata_json/68a1492edadcaf02fff3bfe0ddb4cf308e077774";
         JSONObject jsonObj = new JSONObject(IOUtils.toString(new URL(String.format(str, codeToDomainMap.get(host))).openStream(), StandardCharsets.UTF_8));
@@ -642,6 +623,43 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 }
             }
         }catch (ConcurrentModificationException ignored) {}
+    }
+
+    public void handleSwitch(){
+        // El orden de seleccion con los interruptores importa si se encuentran pegadas, pero aplicar un delay parece solucionarlo
+        for(Integer switchId: listSwitches){ // Iterate through Java List
+            int coordXSwitch = floorItemsID_HPoint.get(switchId).getX();
+            int coordYSwitch = floorItemsID_HPoint.get(switchId).getY();
+
+            // ---Case example of coords --- //
+            // UserCoord (3, 6); SwitchCoord (4, 6) OR UserCoord (5, 6); SwitchCoord (4, 6)
+            if((currentX == coordXSwitch - 1 && currentY == coordYSwitch) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch)){
+                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                Delay();
+            }
+            // UserCoord (4, 5); SwitchCoord (4, 6) OR UserCoord (4, 7); SwitchCoord (4, 6)
+            else if((currentX == coordXSwitch && currentY == coordYSwitch - 1) || (currentX == coordXSwitch && currentY == coordYSwitch + 1)){
+                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                Delay();
+            }
+            // UserCoord (3, 5); SwitchCoord (4, 6) OR UserCoord (5, 7); SwitchCoord (4, 6) [LEFT DIAGONAL]
+            else if((currentX == coordXSwitch - 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch + 1)){
+                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                Delay();
+            }
+            // UserCoord (5, 5); SwitchCoord (4, 6) OR UserCoord (3, 7); SwitchCoord (4, 6) [RIGHT DIAGONAL]
+            else if((currentX == coordXSwitch + 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch - 1 && currentY == coordYSwitch + 1)){
+                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                Delay();
+            }
+        }
+        /* Ignore this logic
+            try {
+                    sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, listSwitches.get(k), 0));
+                        k++;
+            } catch (IndexOutOfBoundsException ignored){
+                k = 0;
+            }*/
     }
 
     public void handleMouseDragged(MouseEvent event) {

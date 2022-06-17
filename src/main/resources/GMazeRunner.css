@@ -8,6 +8,8 @@
 .tab {
     -fx-background-color: #222222;
     -fx-effect: innershadow(gaussian, #d58512, 10, 0, 0, 3);
+    /* background: linear-gradient(to left,#dc4c11 10.71%,#feab2e)
+    linear-gradient(to right bottom,#b84fdd -26.76%,#4965f4 44.6%,#2efb74 132.54%) cool!!*/
 }
 .tab-pane>*.tab-header-area>*.tab-header-background{
     -fx-background-color: #222222;
@@ -38,28 +40,24 @@
 }
 
 #imageClose { /* Evita bug, cuando el puntero sale de la imagen */
-    -fx-image: url("/closeButtonDark.png");
-    -fx-padding: 10;
-    -fx-background-color: firebrick;
+    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/closeButtonDark.png");
 }
 #imageClose:hover { /* Cuando el puntero se pasa sobra la imagen (boton cerrar app) */
-    -fx-image: url("closeButtonHover.png");
-    -fx-background-color: #e81123;
+    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/closeButtonHover.png");
     -fx-cursor: hand; /* Muestra una mano */
 }
 #imageClose:pressed { /* Cuando se presiona la imagen algun efecto deberia pasar */
-    -fx-image: url("closeButtonPressed.png");
+    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/closeButtonPressed.png");
     -fx-background-color: rgba(232, 17, 35, 0.8);
 }
-#imageMinimize {
-    -fx-image: url("/minimizeButtonDark.png");
-}
 
+#imageMinimize {
+    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDark.png");
+}
 #imageMinimize:hover {
-    -fx-image: url("minimizeButtonDarkHover.png");
+    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDarkHover.png");
     -fx-cursor: hand;
 }
-
 #imageMinimize:pressed {
-    -fx-image: url("/minimizeButtonDarkPressed.png");
-}
+    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDarkPressed.png");
+}   /* ../../src/main/img/minimizeButtonDark.png (los dos puntos significa una carpeta anterior) */
