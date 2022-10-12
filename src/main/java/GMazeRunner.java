@@ -1,4 +1,4 @@
-/*import com.github.kwhat.jnativehook.GlobalScreen;
+/* import com.github.kwhat.jnativehook.GlobalScreen;
 import com.github.kwhat.jnativehook.NativeHookException;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;*/
@@ -57,7 +57,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     TextInputControl lastInputControl = null;
 
-    public HMessage _hMessage;
+    private HMessage _hMessage;
     public List<HPoint> coordTiles = new LinkedList<>();
     public List<Integer> listGates = new LinkedList<>();
     public List<Integer> listSwitches = new LinkedList<>();
@@ -79,7 +79,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     private static final Set<String> setGates = new HashSet<>(Arrays.asList("one_way_door*1", "one_way_door*2", "one_way_door*3",
             "one_way_door*4", "one_way_door*5", "one_way_door*6", "one_way_door*7", "one_way_door*8", "one_way_door*9"));
     private static final Set<String> setSwitches = new HashSet<>(Arrays.asList("wf_floor_switch1", "wf_floor_switch2"));
-    private static TreeMap<String, String> codeToDomainMap = new TreeMap<>();
+    private static final TreeMap<String, String> codeToDomainMap = new TreeMap<>();
     static {
         codeToDomainMap.put("br", ".com.br");
         codeToDomainMap.put("de", ".de");
@@ -187,15 +187,21 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     @Override
+    protected void onStartConnection() {
+        new Thread(() -> {
+            System.out.println("Getting GameData...");
+            try { getGameFurniData(); } catch (Exception ignored) { }
+            System.out.println("Gamedata Retrieved!");
+        }).start();
+    }
+
+    @Override
     protected void initExtension() {
         /*  primaryStage.setOnShowing(s -> {});
             primaryStage.setOnCloseRequest(e -> { });   */
 
         onConnect((host, port, APIVersion, versionClient, client) -> {
             this.host = host.substring(5, 7);   // Example: Of "game-es.habbo.com" only takes "es"
-            System.out.println("Getting GameData...");
-            try { getGameFurniData(); } catch (Exception ignored) { }
-            System.out.println("Gamedata Retrieved!");
         });
 
         /* Cuando pasa el mouse por encima de un elemento, se cambia el color del texto
@@ -483,13 +489,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
                             currentX = hEntityUpdate.getMovingTo().getX();  currentY = hEntityUpdate.getMovingTo().getY();
                         }
-                        /* Here, I was testing some things, so ignore this if you want
-                        for (Map.Entry<Integer, String> entry : floorCoords_ID.entrySet()) {
-                            if(currentX == entry.get && currentY == 11){
-
-                            }
-                            // System.out.println("key: " + entry.getKey() + ", value: " + entry.getValue());
-                        }*/
                         Platform.runLater(()-> textCoords.setText("Coords: ( " + currentX + ", " + currentY + " )"));
 
                         for(i = 0; i < coordTiles.size(); i++){
@@ -514,7 +513,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                         }
                     }
                 }
-                catch (NullPointerException nullPointerException) { /* GetMovingTo() generates NullPointerException */ }
+                catch (NullPointerException ignored) {} // .getMovingTo() get null pointer exception
             }
         });
     }
@@ -595,8 +594,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void passGate(){
         try{
-            //for(j = 0; j < floorItemsID_HPoint.size(); j++){
-            for(Integer gateId: listGates){
+            for(Integer gateId: listGates){ // for(j = 0; j < floorItemsID_HPoint.size(); j++)
                 int GetXofGate = floorItemsID_HPoint.get(gateId).getX(); // floorItemsID_HPoint.get(listGates.get(gateId)).getX();
                 int GetYofGate = floorItemsID_HPoint.get(gateId).getY();
 
@@ -659,7 +657,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                         k++;
             } catch (IndexOutOfBoundsException ignored){
                 k = 0;
-            }*/
+            }
+        */
     }
 
     public void handleMouseDragged(MouseEvent event) {
@@ -675,8 +674,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void handleClickClose(MouseEvent event) {
         Stage stage = (Stage) anchorPane.getScene().getWindow();
-        stage.close();
-        onHide();   // fix bug
+        stage.close();  onHide();   // fix bug
     }
 
     public void handleMouseMinimized(MouseEvent event) {
