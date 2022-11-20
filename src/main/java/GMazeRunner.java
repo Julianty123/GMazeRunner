@@ -11,6 +11,7 @@ import gearth.extensions.parsers.HPoint;
 import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
@@ -30,6 +31,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.LogManager;
+
+import static java.text.DateFormat.Field.TIME_ZONE;
 
 
 @ExtensionInfo(
@@ -491,6 +494,12 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                         }
                         Platform.runLater(()-> textCoords.setText("Coords: ( " + currentX + ", " + currentY + " )"));
 
+                        // Puedo agregar un listener en el futuro para poner delay al catch coords
+                        /* SimpleObjectProperty<HPoint> simpleObjectProperty = new SimpleObjectProperty<>(new HPoint(currentX, currentY, 0));
+                        simpleObjectProperty.addListener((observable, oldValue, newValue) -> {
+                            // Here code when the variable changes
+                        }); */
+
                         for(i = 0; i < coordTiles.size(); i++){
                             if(currentX == coordTiles.get(i).getX() &&
                                     currentY == coordTiles.get(i).getY()){
@@ -576,7 +585,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             https://www.habbo.es/gamedata/furnidata_json/1 -> Info organizada como diccionario {}
             https://www.habbo.es/gamedata/furnidata_xml/1 -> Info organizada como XML <>   */
 
-        String str = "https://www.habbo%s/gamedata/furnidata_json/68a1492edadcaf02fff3bfe0ddb4cf308e077774";
+        String str = "https://www.habbo%s/gamedata/furnidata_json/1";
         JSONObject jsonObj = new JSONObject(IOUtils.toString(new URL(String.format(str, codeToDomainMap.get(host))).openStream(), StandardCharsets.UTF_8));
         JSONArray floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
         floorJson.forEach(o -> {

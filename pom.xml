@@ -84,8 +84,8 @@
     <dependencies>
         <dependency>
             <groupId>G-Earth</groupId>
-            <artifactId>G-Earth-Native-Extension</artifactId>
-            <version>1.5.0</version>
+            <artifactId>G-Earth</artifactId>
+            <version>1.5.2</version>
         </dependency>
         <dependency>
             <!-- https://github.com/kwhat/jnativehook/issues/170 In the version 2.1.0 there are some bugs -->
