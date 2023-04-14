@@ -4,6 +4,7 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;*/
 import gearth.extensions.ExtensionForm;
 import gearth.extensions.ExtensionInfo;
+import gearth.extensions.OnConnectionListener;
 import gearth.extensions.parsers.HEntity;
 import gearth.extensions.parsers.HEntityUpdate;
 import gearth.extensions.parsers.HFloorItem;
@@ -11,7 +12,6 @@ import gearth.extensions.parsers.HPoint;
 import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
 import javafx.application.Platform;
-import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
@@ -31,8 +31,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.LogManager;
-
-import static java.text.DateFormat.Field.TIME_ZONE;
 
 
 @ExtensionInfo(
@@ -68,7 +66,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public AnchorPane anchorPane;
 
     TreeMap<Integer,HPoint> floorItemsID_HPoint = new TreeMap<>();      // Key, Value
-    TreeMap<String, Integer> nameToTypeidFloor = new TreeMap<>();
+    TreeMap<String, Integer> nameToTypeIdFloor = new TreeMap<>();
 
     public String host;
     public int idTileAvoid;
@@ -94,6 +92,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         codeToDomainMap.put("tr", ".com.tr");
         codeToDomainMap.put("us", ".com");
     }
+
 
     Timer timerGate = new Timer(1, e -> passGate());
 
@@ -262,60 +261,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             }
         });
 
-        intercept(HMessage.Direction.TOSERVER, "MoveAvatar", hMessage -> {
-            HPacket hPacket = hMessage.getPacket(); // The data is added to a variable of type HPacket
-            HPoint hPoint = new HPoint(hPacket.readInteger(), hPacket.readInteger());
-            if(checkCoords.isSelected()){
-                if (!coordTiles.contains(hPoint)){
-                    coordTiles.add(hPoint);
-                    Platform.runLater(() -> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
-                    sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Point ( "
-                            + hPoint.getX() + "," + hPoint.getY() + " ) Added!", 0, 25, 0, -1));
-                }
-                hMessage.setBlocked(true);
-            }
-            if(checkGates.isSelected()){
-                hMessage.setBlocked(true); // Avoid walking by accident when you are selecting the gate (Transpixelar)
-                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                        "Remember to deactivate this option once selected the gate/s", 0, 21, 0, -1));
-            }
-            if(Objects.equals(flagWord, "TILEAVOID")){
-                hMessage.setBlocked(true); // Avoid walking by accident
-            }
-            if(checkWalkToColorTile.isSelected()){
-                for(ColorTile colorTile: listColorTiles){
-                    if (hPoint.getX() == colorTile.getTilePosition().getX() && hPoint.getY() == colorTile.getTilePosition().getY()) {
-                        hMessage.setBlocked(false);
-                        System.out.println(colorTile.getStateColor());
-                        if(Objects.equals(colorTile.getStateColor(), 6)){ // 6 = GREEN
-                            System.out.println("here should walk"); checkWalkToColorTile.setSelected(false);
-                            hMessage.setBlocked(false);
-                        }
-                        else if(!Objects.equals(colorTile.getStateColor(), 6)){
-                            System.out.println("se bloque caminar");
-                            hMessage.setBlocked(true); // If the color is different to green, will NOT walk
-                        }
-                    }
-                }
-                /*
-                for(ColorTile colorTile: listColorTiles){
-                    int coordXColorTile = colorTile.getTilePosition().getX();
-                    int coordYColorTile = colorTile.getTilePosition().getY();
-                    if ((currentX == coordXColorTile - 1 && currentY == coordYColorTile) || (currentX == coordXColorTile + 1 && currentY == coordYColorTile) ||
-                            (currentX == coordXColorTile && currentY == coordYColorTile - 1) || (currentX == coordXColorTile && currentY == coordYColorTile + 1) ||
-                            (currentX == coordXColorTile - 1 && currentY == coordYColorTile - 1) || (currentX == coordXColorTile + 1 && currentY == coordYColorTile + 1) ||
-                            (currentX == coordXColorTile + 1 && currentY == coordYColorTile - 1) || (currentX == coordXColorTile - 1 && currentY == coordYColorTile + 1)) {
-                    }
-                }*/
-            }
-            if(Objects.equals(flagWord, "COORDCLICK")){
-                hMessage.setBlocked(true);
-                coordClickX = hPoint.getX();    coordClickY = hPoint.getY();
-                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                        "Now, you will click when the tile isnt present in (" + coordClickX + " ," + coordClickY + " )", 0, 19, 0, -1));
-                flagWord = "FIREAVOID";
-            }
-        });
+        intercept(HMessage.Direction.TOSERVER, "MoveAvatar", this::interceptMoveAvatar);
 
         intercept(HMessage.Direction.TOSERVER, "EnterOneWayDoor", hMessage -> {
             if(checkGates.isSelected()){
@@ -329,71 +275,10 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             }
         });
 
-        // Intercepts when a furni is moved from one place to another with wired, for example a color tile
-        intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", hMessage -> {
-            int oldX = hMessage.getPacket().readInteger();
-            int oldY = hMessage.getPacket().readInteger();
-            int newX = hMessage.getPacket().readInteger();
-            int newY = hMessage.getPacket().readInteger();
-            int NotUse = hMessage.getPacket().readInteger();
-            int idCurrentFurniMoving = hMessage.getPacket().readInteger();
-            String furniElevation = hMessage.getPacket().readString();
+        // Intercepts when a furni is moved from one place to another with wired (For example a color tile)
+        intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", this::interceptSlideObjectBundle);
 
-            if (listGates.contains(idCurrentFurniMoving)){ // There are mazes where the gates move with wired
-                floorItemsID_HPoint.replace(idCurrentFurniMoving, new HPoint(newX,newY)); // Updates the map (Very important)
-            }
-
-            for(ColorTile colorTile: listColorTiles){
-                if(colorTile.getTileId() == idCurrentFurniMoving){
-                    colorTile.setTilePosition(new HPoint(newX, newY, Double.parseDouble(furniElevation))); // Se actualizan los parametros de la lista
-                }
-            }
-
-            if( idTileAvoid == idCurrentFurniMoving && Objects.equals(flagWord, "FIREAVOID")){
-                /* Tienen que cumplirse muchas condiciones, las coordenadas de la baldosa color ser diferentes a donde
-                se dara click yFrame ademas el usuario debe estar en la posicion indicada */
-                if( oldX != newX && oldY == newY ){ // When the color tile moves horizontally
-                    if((newX != coordClickX && newY == coordClickY) &&
-                            ((currentX == coordClickX && currentY == coordClickY + 1) ||
-                                    (currentX == coordClickX && currentY == coordClickY - 1))){
-                        sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, coordClickX, coordClickY));
-                    }
-                }
-                else if( oldX == newX && oldY != newY ){ // When the color tile moves vertically
-                    if((newX == coordClickX && newY != coordClickY) &&
-                            ((currentX == coordClickX - 1 && currentY == coordClickY) ||
-                                    (currentX == coordClickX + 1 && currentY == coordClickY))){
-                        sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, coordClickX, coordClickY));
-                    }
-                }
-            }
-        });
-
-        intercept(HMessage.Direction.TOSERVER, "UseFurniture", hMessage -> {
-            int furniId = hMessage.getPacket().readInteger();
-            // System.out.println(floorItemsID_HPoint.get(furniId));
-            if(flagWord.equals("TILEAVOID")){
-                if(idTileAvoid == 0){
-                    idTileAvoid = furniId;
-                    sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                            "Tile with id '" + idTileAvoid + "' added!", 0, 19, 0, -1));
-                }
-                else {
-                    idTileAvoid = furniId;
-                    sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                            "Old id has been replaced by this: " + idTileAvoid, 0, 19, 0, -1));
-                }
-                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Click where you want to walk, that is to say, " +
-                        "avoiding the color tile", 0, 19, 0, -1)); hMessage.setBlocked(true);    flagWord = "COORDCLICK";
-            }
-            if(checkSwitch.isSelected()){
-                if(!listSwitches.contains(furniId)){
-                    listSwitches.add(furniId);
-                    Platform.runLater(()-> checkSwitch.setText("Switch Furnis (" + listSwitches.size() + ")"));
-                }
-                hMessage.setBlocked(true); // Block double click (accidentally walk)
-            }
-        });
+        intercept(HMessage.Direction.TOSERVER, "UseFurniture", this::interceptUseFurniture);
 
         // Intercepts when a furni change the state through wired (In this case a color tile)
         intercept(HMessage.Direction.TOCLIENT, "ObjectDataUpdate", hMessage -> {
@@ -418,45 +303,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             //System.out.println("Rev: " + Revolution);
         });*/
 
-        // Intercepts when you loads the floor items (happens when you entry to the room)
-        intercept(HMessage.Direction.TOCLIENT, "Objects", hMessage -> {
-            if(checkThrough.isSelected()){ sendToClient(new HPacket("YouArePlayingGame", HMessage.Direction.TOCLIENT, true)); }
-            try{
-                listGates.clear();  listSwitches.clear();   listColorTiles.clear();     // Lists deleted!
-                floorItemsID_HPoint.clear(); // Map deleted!
-                for (HFloorItem hFloorItem: HFloorItem.parse(hMessage.getPacket())){
-                    // System.out.println("id: " + hFloorItem.getId() + " ; typeId: " + hFloorItem.getTypeId());
-                    HPoint hPoint = new HPoint(hFloorItem.getTile().getX(), hFloorItem.getTile().getY(), hFloorItem.getTile().getZ());
-                    if(!floorItemsID_HPoint.containsKey(hFloorItem.getId())){ // Entra al condicional si no contiene la id especificada
-                        floorItemsID_HPoint.put(hFloorItem.getId(), hPoint);
-                        // Mirar si se puede usar forEach o algo asi...
-                        for(String classNameGate: setGates){
-                            // Check if there are those unique id or type id is in the room (This depends on the hotel you are connected)
-                            if(hFloorItem.getTypeId() == nameToTypeidFloor.get(classNameGate)){
-                                listGates.add(hFloorItem.getId());
-                            }
-                        }
-                        for(String classNameSwitch: setSwitches){
-                            if(hFloorItem.getTypeId() == nameToTypeidFloor.get(classNameSwitch)){
-                                listSwitches.add(hFloorItem.getId());
-                            }
-                        }
-                        if(hFloorItem.getTypeId() == nameToTypeidFloor.get("wf_colortile")){
-                            /*if( 5 == hPoint.getX() && (4 <= hPoint.getY() && 7 >= hPoint.getY())){ // Limita que furnis es para probar
-
-                            }*/
-                            Object colorNumber = hFloorItem.getStuff()[0]; // Example: 0 = White, 1 = Yellow, 2 = Orange...
-                            listColorTiles.add(new ColorTile(hFloorItem.getId(), hPoint, colorNumber));
-                        }
-                    }
-                }
-            }catch (Exception e) { System.out.println("Exception here!"); }
-            Platform.runLater(()-> {
-                checkGates.setText("Catch Gates (" + listGates.size() + ")");
-                checkSwitch.setText("Switch Furnis (" + listSwitches.size() + ")");
-                checkWalkToColorTile.setText("Walk to Color Tile (" + listColorTiles.size() + ")");
-            });
-        });
+        // Intercepts when you entry to the room
+        intercept(HMessage.Direction.TOCLIENT, "Objects", this::interceptObjects);
 
         // Intercept this packet when you enter or restart a room
         intercept(HMessage.Direction.TOCLIENT, "Users", hMessage -> {
@@ -473,57 +321,219 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             } catch (Exception e) { e.printStackTrace(); }
         });
 
-        // Sorry for the Spaghetti code, so i need to organize some things...
-        intercept(HMessage.Direction.TOCLIENT, "UserUpdate", hMessage -> {
-            HPacket hPacket = hMessage.getPacket();
-            for (HEntityUpdate hEntityUpdate: HEntityUpdate.parse(hPacket)){
-                try {
-                    int CurrentIndex = hEntityUpdate.getIndex();  // HEntityUpdate class allows get UserIndex
-                    if(yourIndex == CurrentIndex){
-                        // fix bug roller (important), also update the coords when you entry to the room
-                        int jokerX = hEntityUpdate.getTile().getX();    int jokerY = hEntityUpdate.getTile().getY();
 
-                        if(radioButtonWalk.isSelected()){
-                            currentX = hEntityUpdate.getTile().getX();  currentY = hEntityUpdate.getTile().getY();
-                        }
-                        else if(radioButtonRun.isSelected()){
-                            currentX = jokerX;  currentY = jokerY;      // fix bug roller, because the coordinate is not updated
-                            Platform.runLater(()-> textCoords.setText("Coords: ( " + jokerX + ", " + jokerY + " )"));   // fix bug roller (ignore)
+        intercept(HMessage.Direction.TOCLIENT, "UserUpdate", this::interceptUserUpdate);
+    }
 
-                            currentX = hEntityUpdate.getMovingTo().getX();  currentY = hEntityUpdate.getMovingTo().getY();
-                        }
-                        Platform.runLater(()-> textCoords.setText("Coords: ( " + currentX + ", " + currentY + " )"));
+    private void interceptMoveAvatar(HMessage hMessage) {
+        HPacket hPacket = hMessage.getPacket(); // The data is added to a variable of type HPacket
+        HPoint hPoint = new HPoint(hPacket.readInteger(), hPacket.readInteger());
+        if(checkCoords.isSelected()){
+            if (!coordTiles.contains(hPoint)){
+                coordTiles.add(hPoint);
+                Platform.runLater(() -> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
+                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Point ( "
+                        + hPoint.getX() + "," + hPoint.getY() + " ) Added!", 0, 25, 0, -1));
+            }
+            hMessage.setBlocked(true);
+        }
+        if(checkGates.isSelected()){
+            hMessage.setBlocked(true); // Avoid walking by accident when you are selecting the gate (Transpixelar)
+            sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
+                    "Remember to deactivate this option once selected the gate/s", 0, 21, 0, -1));
+        }
+        if(Objects.equals(flagWord, "TILEAVOID")){
+            hMessage.setBlocked(true); // Avoid walking by accident
+        }
+        if(checkWalkToColorTile.isSelected()){
+            for(ColorTile colorTile: listColorTiles){
+                if (hPoint.getX() == colorTile.getTilePosition().getX() && hPoint.getY() == colorTile.getTilePosition().getY()) {
+                    hMessage.setBlocked(false);
+                    System.out.println(colorTile.getStateColor());
+                    if(Objects.equals(colorTile.getStateColor(), 6)){ // 6 = GREEN
+                        System.out.println("here should walk"); checkWalkToColorTile.setSelected(false);
+                        hMessage.setBlocked(false);
+                    }
+                    else if(!Objects.equals(colorTile.getStateColor(), 6)){
+                        System.out.println("se bloque caminar");
+                        hMessage.setBlocked(true); // If the color is different to green, will NOT walk
+                    }
+                }
+            }
+                /*
+                for(ColorTile colorTile: listColorTiles){
+                    int coordXColorTile = colorTile.getTilePosition().getX();
+                    int coordYColorTile = colorTile.getTilePosition().getY();
+                    if ((currentX == coordXColorTile - 1 && currentY == coordYColorTile) || (currentX == coordXColorTile + 1 && currentY == coordYColorTile) ||
+                            (currentX == coordXColorTile && currentY == coordYColorTile - 1) || (currentX == coordXColorTile && currentY == coordYColorTile + 1) ||
+                            (currentX == coordXColorTile - 1 && currentY == coordYColorTile - 1) || (currentX == coordXColorTile + 1 && currentY == coordYColorTile + 1) ||
+                            (currentX == coordXColorTile + 1 && currentY == coordYColorTile - 1) || (currentX == coordXColorTile - 1 && currentY == coordYColorTile + 1)) {
+                    }
+                }*/
+        }
+        if(Objects.equals(flagWord, "COORDCLICK")){
+            hMessage.setBlocked(true);
+            coordClickX = hPoint.getX();    coordClickY = hPoint.getY();
+            sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
+                    "Now, you will click when the tile isnt present in (" + coordClickX + " ," + coordClickY + " )", 0, 19, 0, -1));
+            flagWord = "FIREAVOID";
+        }
+    }
 
-                        // Puedo agregar un listener en el futuro para poner delay al catch coords
+    private void interceptSlideObjectBundle(HMessage hMessage) {
+        int oldX = hMessage.getPacket().readInteger();
+        int oldY = hMessage.getPacket().readInteger();
+        int newX = hMessage.getPacket().readInteger();
+        int newY = hMessage.getPacket().readInteger();
+        int NotUse = hMessage.getPacket().readInteger();
+        int idCurrentFurniMoving = hMessage.getPacket().readInteger();
+        String furniElevation = hMessage.getPacket().readString();
+
+        if (listGates.contains(idCurrentFurniMoving)){ // There are mazes where the gates move with wired
+            floorItemsID_HPoint.replace(idCurrentFurniMoving, new HPoint(newX,newY)); // Updates the map (Very important)
+        }
+
+        for(ColorTile colorTile: listColorTiles){
+            if(colorTile.getTileId() == idCurrentFurniMoving){
+                colorTile.setTilePosition(new HPoint(newX, newY, Double.parseDouble(furniElevation))); // Se actualizan los parametros de la lista
+            }
+        }
+
+        if( idTileAvoid == idCurrentFurniMoving && Objects.equals(flagWord, "FIREAVOID")){
+                /* Tienen que cumplirse muchas condiciones, las coordenadas de la baldosa color ser diferentes a donde
+                se dara click yFrame ademas el usuario debe estar en la posicion indicada */
+            if( oldX != newX && oldY == newY ){ // When the color tile moves horizontally
+                if((newX != coordClickX && newY == coordClickY) &&
+                        ((currentX == coordClickX && currentY == coordClickY + 1) ||
+                                (currentX == coordClickX && currentY == coordClickY - 1))){
+                    sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, coordClickX, coordClickY));
+                }
+            }
+            else if( oldX == newX && oldY != newY ){ // When the color tile moves vertically
+                if((newX == coordClickX && newY != coordClickY) &&
+                        ((currentX == coordClickX - 1 && currentY == coordClickY) ||
+                                (currentX == coordClickX + 1 && currentY == coordClickY))){
+                    sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, coordClickX, coordClickY));
+                }
+            }
+        }
+    }
+
+    private void interceptUseFurniture(HMessage hMessage) {
+        int furniId = hMessage.getPacket().readInteger();
+        // System.out.println(floorItemsID_HPoint.get(furniId));
+        if(flagWord.equals("TILEAVOID")){
+            if(idTileAvoid == 0){
+                idTileAvoid = furniId;
+                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
+                        "Tile with id '" + idTileAvoid + "' added!", 0, 19, 0, -1));
+            }
+            else {
+                idTileAvoid = furniId;
+                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
+                        "Old id has been replaced by this: " + idTileAvoid, 0, 19, 0, -1));
+            }
+            sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Click where you want to walk, that is to say, " +
+                    "avoiding the color tile", 0, 19, 0, -1)); hMessage.setBlocked(true);    flagWord = "COORDCLICK";
+        }
+        if(checkSwitch.isSelected()){
+            if(!listSwitches.contains(furniId)){
+                listSwitches.add(furniId);
+                Platform.runLater(()-> checkSwitch.setText("Switch Furnis (" + listSwitches.size() + ")"));
+            }
+            hMessage.setBlocked(true); // Block double click (accidentally walk)
+        }
+    }
+
+    // Yet exists the Spaghetti code, i need to organize some things...
+    public void interceptUserUpdate(HMessage hMessage){
+        HPacket hPacket = hMessage.getPacket();
+        for (HEntityUpdate hEntityUpdate: HEntityUpdate.parse(hPacket)){
+            try {
+                int CurrentIndex = hEntityUpdate.getIndex();  // HEntityUpdate class allows get UserIndex
+                if(yourIndex == CurrentIndex){
+                    // fix bug roller (important), also update the coords when you entry to the room
+                    int jokerX = hEntityUpdate.getTile().getX();    int jokerY = hEntityUpdate.getTile().getY();
+
+                    if(radioButtonWalk.isSelected()){
+                        currentX = hEntityUpdate.getTile().getX();  currentY = hEntityUpdate.getTile().getY();
+                    }
+                    else if(radioButtonRun.isSelected()){
+                        currentX = jokerX;  currentY = jokerY;      // fix bug roller, because the coordinate is not updated
+                        Platform.runLater(()-> textCoords.setText("Coords: ( " + jokerX + ", " + jokerY + " )"));   // fix bug roller (ignore)
+
+                        currentX = hEntityUpdate.getMovingTo().getX();  currentY = hEntityUpdate.getMovingTo().getY();
+                    }
+                    Platform.runLater(()-> textCoords.setText("Coords: ( " + currentX + ", " + currentY + " )"));
+
+                    // Puedo agregar un listener en el futuro para poner delay al catch coords
                         /* SimpleObjectProperty<HPoint> simpleObjectProperty = new SimpleObjectProperty<>(new HPoint(currentX, currentY, 0));
                         simpleObjectProperty.addListener((observable, oldValue, newValue) -> {
                             // Here code when the variable changes
                         }); */
 
-                        for(i = 0; i < coordTiles.size(); i++){
-                            if(currentX == coordTiles.get(i).getX() &&
-                                    currentY == coordTiles.get(i).getY()){
-                                try {
-                                    sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER,
-                                            coordTiles.get(i+1).getX(), coordTiles.get(i+1).getY()));
-                                }catch (Exception e)
-                                {
-                                    coordTiles.clear();
-                                    Platform.runLater(()-> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
-                                }
+                    for(i = 0; i < coordTiles.size(); i++){
+                        if(currentX == coordTiles.get(i).getX() &&
+                                currentY == coordTiles.get(i).getY()){
+                            try {
+                                sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER,
+                                        coordTiles.get(i+1).getX(), coordTiles.get(i+1).getY()));
+                            }catch (Exception e)
+                            {
+                                coordTiles.clear();
+                                Platform.runLater(()-> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
                             }
                         }
-                        // Runs when user avoid the tile successfully
-                        if(Objects.equals(flagWord, "FIREAVOID") && ((currentX == coordClickX && currentY == coordClickY))){
-                            flagWord = "";
-                            idTileAvoid = 0;
-                            sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Congratulations! You have " +
-                                    "passed successfully.", 0, 23, 0, -1));
-                        }
+                    }
+                    // Runs when user avoid the tile successfully
+                    if(Objects.equals(flagWord, "FIREAVOID") && ((currentX == coordClickX && currentY == coordClickY))){
+                        flagWord = "";
+                        idTileAvoid = 0;
+                        sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Congratulations! You have " +
+                                "passed successfully.", 0, 23, 0, -1));
                     }
                 }
-                catch (NullPointerException ignored) {} // .getMovingTo() get null pointer exception
             }
+            catch (NullPointerException ignored) {} // .getMovingTo() get null pointer exception
+        }
+    }
+
+    public void interceptObjects(HMessage hMessage){
+        if(checkThrough.isSelected()){ sendToClient(new HPacket("YouArePlayingGame", HMessage.Direction.TOCLIENT, true)); }
+        try{
+            listGates.clear();  listSwitches.clear();   listColorTiles.clear();     // Lists deleted!
+            floorItemsID_HPoint.clear(); // Map deleted!
+            for (HFloorItem hFloorItem: HFloorItem.parse(hMessage.getPacket())){
+                // System.out.println("id: " + hFloorItem.getId() + " ; typeId: " + hFloorItem.getTypeId());
+                HPoint hPoint = new HPoint(hFloorItem.getTile().getX(), hFloorItem.getTile().getY(), hFloorItem.getTile().getZ());
+                if(!floorItemsID_HPoint.containsKey(hFloorItem.getId())){ // Entra al condicional si no contiene la id especificada
+                    floorItemsID_HPoint.put(hFloorItem.getId(), hPoint);
+                    // Mirar si se puede usar forEach o algo asi...
+                    for(String classNameGate: setGates){
+                        // Check if there are those unique id or type id is in the room (This depends on the hotel you are connected)
+                        if(hFloorItem.getTypeId() == nameToTypeIdFloor.get(classNameGate)){
+                            listGates.add(hFloorItem.getId());
+                        }
+                    }
+                    for(String classNameSwitch: setSwitches){
+                        if(hFloorItem.getTypeId() == nameToTypeIdFloor.get(classNameSwitch)){
+                            listSwitches.add(hFloorItem.getId());
+                        }
+                    }
+                    if(hFloorItem.getTypeId() == nameToTypeIdFloor.get("wf_colortile")){
+                            /*if( 5 == hPoint.getX() && (4 <= hPoint.getY() && 7 >= hPoint.getY())){ // Limita que furnis es para probar
+
+                            }*/
+                        Object colorNumber = hFloorItem.getStuff()[0]; // Example: 0 = White, 1 = Yellow, 2 = Orange...
+                        listColorTiles.add(new ColorTile(hFloorItem.getId(), hPoint, colorNumber));
+                    }
+                }
+            }
+        }catch (Exception e) { System.out.println("Exception here!"); }
+        Platform.runLater(()-> {
+            checkGates.setText("Catch Gates (" + listGates.size() + ")");
+            checkSwitch.setText("Switch Furnis (" + listSwitches.size() + ")");
+            checkWalkToColorTile.setText("Walk to Color Tile (" + listColorTiles.size() + ")");
         });
     }
 
@@ -590,7 +600,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         JSONArray floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
         floorJson.forEach(o -> {
             JSONObject item = (JSONObject)o;
-            nameToTypeidFloor.put(item.getString("classname"), item.getInt("id"));
+            nameToTypeIdFloor.put(item.getString("classname"), item.getInt("id"));
         });
         /* Code By Sirjonasxx
         JSONArray wallJson = object.getJSONObject("wallitemtypes").getJSONArray("furnitype");
