@@ -30,3 +30,8 @@ Here you can find all the information to develop your first extension: https://g
    [IDE]: <https://www.jetbrains.com/es-es/idea/download/#section=windows>
    [Java 8]: <https://www.java.com/es/download/ie_manual.jsp>
    [Java JDK 8]: <https://www.oracle.com/co/java/technologies/javase/javase8-archive-downloads.html>
+
+### Notice
+I think I'm going to stop the development of this extension because there is already a user who wants to take advantage of this to make money, I consider myself the legitimate owner of this idea, I don't want to be pretentious but thanks to me good progress has been made in automation , I am quite sure that soon there will be more news with this era of artificial intelligence, if you like my extensions, thanks for supporting me, a promising future is coming not only in this virtual environment
+
+P.S.: don't pay for that extension so far it's almost impossible to have a script that works in any maze, there are more and more mazes with more ingenious ideas, the owners will look for ways to avoid scripting (adding levels that the extension can't understand or using wired, I don't know)

@@ -144,20 +144,23 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         } */
     }
 
-    @Override
-    protected void onShow() {   // Runs when you opens the extension
+    public void userInitializer(){
         yourIndex = -1;
         textConnected.setText("Connected to domain: " + codeToDomainMap.get(host));
         radioButtonAuto.setStyle("-fx-text-fill: blue;");
         // textConnected.setFill(Paint.valueOf("BLUE")); // Example: "GREEN" or "#008000"
 
         // When its sent, get UserObject packet
-        sendToServer(new HPacket("InfoRetrieve", HMessage.Direction.TOSERVER));
+        sendToServer(new HPacket("{out:InfoRetrieve}"));
         // When its sent, get UserIndex without restart room
-        sendToServer(new HPacket("AvatarExpression", HMessage.Direction.TOSERVER, 0));
+        sendToServer(new HPacket("{out:AvatarExpression}{i:0}"));
         // When its sent, get wallitems, flooritems and other things without restart room
-        sendToServer(new HPacket("GetHeightMap", HMessage.Direction.TOSERVER));
+        sendToServer(new HPacket("{out:GetHeightMap}"));
+    }
 
+    @Override
+    protected void onShow() {   // Runs when you opens the extension
+        userInitializer();
         LogManager.getLogManager().reset();
         try {
             if(!GlobalScreen.isNativeHookRegistered()){
@@ -176,8 +179,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     @Override
     protected void onHide() {
-        yourIndex = -1;     checkThrough.setSelected(false);
-        sendToClient(new HPacket("YouArePlayingGame", HMessage.Direction.TOCLIENT, checkThrough.isSelected()));
+        yourIndex = -1; checkThrough.setSelected(false);
+        sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
         //GlobalScreen.removeNativeKeyListener(this);
         try {
             GlobalScreen.unregisterNativeHook();
@@ -218,10 +221,10 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
         checkThrough.setOnAction(event ->{
             if(checkThrough.isSelected()){
-                sendToClient(new HPacket("YouArePlayingGame", HMessage.Direction.TOCLIENT, true));
+                sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
             }
             else {
-                sendToClient(new HPacket("YouArePlayingGame", HMessage.Direction.TOCLIENT, false));
+                sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
             }
         });
 
@@ -246,7 +249,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 _hMessage = hMessage; // public variable
                 String message = hMessage.getPacket().readString();
                 if(message.equalsIgnoreCase(":tileavoid")){
-                    sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Double click on the tile you want to avoid", 0, 19, 0, -1)); hMessage.setBlocked(true);
+                    sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Double click on the tile you want to avoid\"}{i:0}{i:19}{i:0}{i:-1}")));
+                    hMessage.setBlocked(true);
                     flagWord = "TILEAVOID";   hMessage.setBlocked(true);
                 }
                 else if(message.equalsIgnoreCase(":deletecoords")){  // or .toLowerCase()
@@ -269,8 +273,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 if (!listGates.contains(GateID)){
                     listGates.add(GateID);
                     Platform.runLater(() -> checkGates.setText("Catch Gates (" + listGates.size() + ")"));
-                    sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Gate with id '"
-                            + GateID + "' added!", 0, 25, 0, -1));
+                    sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Gate with id '%s' added! \"}{i:0}{i:25}{i:0}{i:-1}", GateID)));
                 }
             }
         });
@@ -332,15 +335,13 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             if (!coordTiles.contains(hPoint)){
                 coordTiles.add(hPoint);
                 Platform.runLater(() -> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
-                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Point ( "
-                        + hPoint.getX() + "," + hPoint.getY() + " ) Added!", 0, 25, 0, -1));
+                sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Point (%s, %s) Added!\"}{i:0}{i:25}{i:0}{i:-1}", hPoint.getX(), hPoint.getY())));
             }
             hMessage.setBlocked(true);
         }
         if(checkGates.isSelected()){
             hMessage.setBlocked(true); // Avoid walking by accident when you are selecting the gate (Transpixelar)
-            sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                    "Remember to deactivate this option once selected the gate/s", 0, 21, 0, -1));
+            sendToClient(new HPacket("{in:Chat}{i:999}{s:\"Remember to deactivate this option once selected the gate/s\"}{i:0}{i:21}{i:0}{i:-1}"));
         }
         if(Objects.equals(flagWord, "TILEAVOID")){
             hMessage.setBlocked(true); // Avoid walking by accident
@@ -374,8 +375,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         if(Objects.equals(flagWord, "COORDCLICK")){
             hMessage.setBlocked(true);
             coordClickX = hPoint.getX();    coordClickY = hPoint.getY();
-            sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                    "Now, you will click when the tile isnt present in (" + coordClickX + " ," + coordClickY + " )", 0, 19, 0, -1));
+            sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Now, you will click when the tile isnt present in (%s, %s)\"}{i:0}{i:19}{i:0}{i:-1}", coordClickX, coordClickY)));
             flagWord = "FIREAVOID";
         }
     }
@@ -406,14 +406,14 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 if((newX != coordClickX && newY == coordClickY) &&
                         ((currentX == coordClickX && currentY == coordClickY + 1) ||
                                 (currentX == coordClickX && currentY == coordClickY - 1))){
-                    sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, coordClickX, coordClickY));
+                    sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordClickX, coordClickY)));
                 }
             }
             else if( oldX == newX && oldY != newY ){ // When the color tile moves vertically
                 if((newX == coordClickX && newY != coordClickY) &&
                         ((currentX == coordClickX - 1 && currentY == coordClickY) ||
                                 (currentX == coordClickX + 1 && currentY == coordClickY))){
-                    sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, coordClickX, coordClickY));
+                    sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordClickX, coordClickY)));
                 }
             }
         }
@@ -425,16 +425,14 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         if(flagWord.equals("TILEAVOID")){
             if(idTileAvoid == 0){
                 idTileAvoid = furniId;
-                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                        "Tile with id '" + idTileAvoid + "' added!", 0, 19, 0, -1));
+                sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Tile with id: '%s' added!\"}{i:0}{i:19}{i:0}{i:-1}", idTileAvoid)));
             }
             else {
                 idTileAvoid = furniId;
-                sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999,
-                        "Old id has been replaced by this: " + idTileAvoid, 0, 19, 0, -1));
+                sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Old id has been replaced by this: %s\"}{i:0}{i:19}{i:0}{i:-1}", idTileAvoid)));
             }
-            sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Click where you want to walk, that is to say, " +
-                    "avoiding the color tile", 0, 19, 0, -1)); hMessage.setBlocked(true);    flagWord = "COORDCLICK";
+            sendToClient(new HPacket("{in:Chat}{i:999}{s:\"Click where you want to walk, that is to say, avoiding the color tile\"}{i:0}{i:19}{i:0}{i:-1}"));
+            hMessage.setBlocked(true);    flagWord = "COORDCLICK";
         }
         if(checkSwitch.isSelected()){
             if(!listSwitches.contains(furniId)){
@@ -476,8 +474,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                         if(currentX == coordTiles.get(i).getX() &&
                                 currentY == coordTiles.get(i).getY()){
                             try {
-                                sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER,
-                                        coordTiles.get(i+1).getX(), coordTiles.get(i+1).getY()));
+                                sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(i+1).getX(), coordTiles.get(i+1).getY())));
                             }catch (Exception e)
                             {
                                 coordTiles.clear();
@@ -489,8 +486,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                     if(Objects.equals(flagWord, "FIREAVOID") && ((currentX == coordClickX && currentY == coordClickY))){
                         flagWord = "";
                         idTileAvoid = 0;
-                        sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "Congratulations! You have " +
-                                "passed successfully.", 0, 23, 0, -1));
+                        sendToClient(new HPacket("{in:Chat}{i:999}{s:\"Congratulations! You have passed successfully.\"}{i:0}{i:23}{i:0}{i:-1}"));
                     }
                 }
             }
@@ -499,7 +495,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     public void interceptObjects(HMessage hMessage){
-        if(checkThrough.isSelected()){ sendToClient(new HPacket("YouArePlayingGame", HMessage.Direction.TOCLIENT, true)); }
+        if(checkThrough.isSelected()){ sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", true))); }
         try{
             listGates.clear();  listSwitches.clear();   listColorTiles.clear();     // Lists deleted!
             floorItemsID_HPoint.clear(); // Map deleted!
@@ -539,7 +535,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void handleFire() {
         if(coordTiles.size() != 0){
-            sendToServer(new HPacket("MoveAvatar", HMessage.Direction.TOSERVER, coordTiles.get(0).getX(), coordTiles.get(0).getY()));
+            sendToClient(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(0).getX(), coordTiles.get(0).getY())));
         }
     }
 
@@ -553,7 +549,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public void handleDeleteGates() {
         listGates.clear();
         Platform.runLater(()-> checkGates.setText("Catch Gates (" + listGates.size() + ")"));
-        sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "The list of gates has been " + "removed successfully", 0, 19, 0, -1));
+        sendToClient(new HPacket("{in:Chat}{i:999}{s:\"The list of gates has been removed successfully\"}{i:0}{i:19}{i:0}{i:-1}"));
         try{
             _hMessage.setBlocked(true);
         }catch (NullPointerException ignored){}
@@ -562,7 +558,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public void handleDeleteCoords() {
         coordTiles.clear();
         Platform.runLater(()-> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
-        sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "The coords to walk to have been removed correctly", 0, 19, 0, -1));
+        sendToClient(new HPacket("{in:Chat}{i:999}{s:\"The coords to walk to have been removed correctly\"}{i:0}{i:19}{i:0}{i:-1}"));
         try{
             _hMessage.setBlocked(true);
         }catch (NullPointerException ignored){}
@@ -571,7 +567,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public void handleDeleteSwitches() {
         listSwitches.clear();
         Platform.runLater(()-> checkSwitch.setText("Switch Furnis (" + listSwitches.size() + ")"));
-        sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "The list of switches has been removed successfully", 0, 19, 0, -1));
+        sendToClient(new HPacket("{in:Chat}{i:999}{s:\"The list of switches has been removed successfully\"}{i:0}{i:19}{i:0}{i:-1}"));
+        // sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "The list of switches has been removed successfully", 0, 19, 0, -1));
         try{
             _hMessage.setBlocked(true);
         }catch (NullPointerException ignored){}
@@ -620,17 +617,17 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 // ---Case example of coords --- //
                 // UserCoord (3, 6); GateCoord (4, 6)
                 if( currentX == GetXofGate - 1 && currentY == GetYofGate ){
-                    sendToServer(new HPacket("EnterOneWayDoor", HMessage.Direction.TOSERVER, gateId)); // listGates.get(gateId)
+                    sendToServer(new HPacket(String.format("{out:EnterOneWayDoor}{i:%s}", gateId)));
                     Delay();
                 }
                 // UserCoord (5, 6); GateCoord (4, 6)
                 else if ( currentX == GetXofGate + 1 && currentY == GetYofGate ){
-                    sendToServer(new HPacket("EnterOneWayDoor", HMessage.Direction.TOSERVER, gateId));
+                    sendToServer(new HPacket(String.format("{out:EnterOneWayDoor}{i:%s}", gateId)));
                     Delay();
                 }
                 // UserCoord (4, 7); GateCoord (4, 6)
                 else if ( currentX == GetXofGate && currentY == GetYofGate + 1 ){
-                    sendToServer(new HPacket("EnterOneWayDoor", HMessage.Direction.TOSERVER, gateId));
+                    sendToServer(new HPacket(String.format("{out:EnterOneWayDoor}{i:%s}", gateId)));
                     Delay();
                 }
                 // UserCoord (4, 5); GateCoord (4, 6)
@@ -651,22 +648,22 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             // ---Case example of coords --- //
             // UserCoord (3, 6); SwitchCoord (4, 6) OR UserCoord (5, 6); SwitchCoord (4, 6)
             if((currentX == coordXSwitch - 1 && currentY == coordYSwitch) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch)){
-                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
                 Delay();
             }
             // UserCoord (4, 5); SwitchCoord (4, 6) OR UserCoord (4, 7); SwitchCoord (4, 6)
             else if((currentX == coordXSwitch && currentY == coordYSwitch - 1) || (currentX == coordXSwitch && currentY == coordYSwitch + 1)){
-                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
                 Delay();
             }
             // UserCoord (3, 5); SwitchCoord (4, 6) OR UserCoord (5, 7); SwitchCoord (4, 6) [LEFT DIAGONAL]
             else if((currentX == coordXSwitch - 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch + 1)){
-                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
                 Delay();
             }
             // UserCoord (5, 5); SwitchCoord (4, 6) OR UserCoord (3, 7); SwitchCoord (4, 6) [RIGHT DIAGONAL]
             else if((currentX == coordXSwitch + 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch - 1 && currentY == coordYSwitch + 1)){
-                sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, switchId, 0));
+                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
                 Delay();
             }
         }
