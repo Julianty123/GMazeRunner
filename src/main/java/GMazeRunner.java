@@ -36,7 +36,7 @@ import java.util.logging.LogManager;
 @ExtensionInfo(
         Title = "GMazeRunner",
         Description = "It could be better",
-        Version = "1.4.8",
+        Version = "1.4.9",
         Author = "Julianty"
 )
 
@@ -147,7 +147,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public void userInitializer(){
         yourIndex = -1;
         textConnected.setText("Connected to domain: " + codeToDomainMap.get(host));
-        radioButtonAuto.setStyle("-fx-text-fill: blue;");
+        radioButtonAuto.setStyle("-fx-text-fill: cyan;");
         // textConnected.setFill(Paint.valueOf("BLUE")); // Example: "GREEN" or "#008000"
 
         // When its sent, get UserObject packet
@@ -296,15 +296,22 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             }
         });
 
-        /* ignore this, Se activa cuando el transpixelar es girado en este caso con Wired
+        // It seems to be called when a furni is turned or moved
         intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", hMessage -> {
             int FurniID = hMessage.getPacket().readInteger();
             int NotUse = hMessage.getPacket().readInteger();
-            int CoordX = hMessage.getPacket().readInteger();
-            int CoordY = hMessage.getPacket().readInteger();
+            int xCoord = hMessage.getPacket().readInteger();
+            int yCoord = hMessage.getPacket().readInteger();
             int Revolution = hMessage.getPacket().readInteger();
-            //System.out.println("Rev: " + Revolution);
-        });*/
+
+            if (listGates.contains(FurniID)){ // There are mazes where the gates move with wired
+                floorItemsID_HPoint.replace(FurniID, new HPoint(xCoord, yCoord)); // Updates the map (Very important)
+            }
+
+            if (listSwitches.contains(FurniID)){
+                floorItemsID_HPoint.replace(FurniID, new HPoint(xCoord,yCoord));
+            }
+        });
 
         // Intercepts when you entry to the room
         intercept(HMessage.Direction.TOCLIENT, "Objects", this::interceptObjects);
