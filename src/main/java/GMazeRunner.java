@@ -105,8 +105,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public void nativeKeyPressed(NativeKeyEvent nativeKeyEvent) {
         String keyText = NativeKeyEvent.getKeyText(nativeKeyEvent.getKeyCode());
         TextInputControl[] txtFieldsHotKeys = new TextInputControl[]{txtHotKeyGates, txtHotKeySwitches};
-        /* When the key is released, somehow the loop stops, however it reduces performance and fails sometimes, sorry :/
-        new Thread(() -> { }).start();*/
+
         for(TextInputControl element: txtFieldsHotKeys){
             if(element.isFocused()){    // si alguno de los controles tiene el control hace algo...
                 element.setText(keyText);
@@ -123,12 +122,13 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 if(element.getText().equals(keyText)){
                     if(radioButtonKey.isSelected()){
                         if(keyText.equals(txtHotKeyGates.getText())){
-                            try { passGate(); } catch (Exception ignored) { }
+                            // When the key is released a new thread appears to stop the loop
+                            new Thread(this::passGate).start();
                         }
                     }
                     if(rbSwitchKey.isSelected()){
                         if(keyText.equals(txtHotKeySwitches.getText())){
-                            try { hitSwitch(); } catch (Exception ignored) { }
+                            new Thread(this::hitSwitch).start();
                         }
                     }
                 }
