@@ -4,7 +4,6 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent;
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener;*/
 import gearth.extensions.ExtensionForm;
 import gearth.extensions.ExtensionInfo;
-import gearth.extensions.OnConnectionListener;
 import gearth.extensions.parsers.HEntity;
 import gearth.extensions.parsers.HEntityUpdate;
 import gearth.extensions.parsers.HFloorItem;
@@ -12,6 +11,7 @@ import gearth.extensions.parsers.HPoint;
 import gearth.protocol.HMessage;
 import gearth.protocol.HPacket;
 import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
@@ -50,12 +50,13 @@ import java.util.logging.LogManager;
  */
 
 public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
-    public RadioButton radioButtonWalk, radioButtonRun, radioButtonOff, radioButtonAuto, radioButtonKey;
+    public RadioButton rbSwitchOff, rbSwitchAuto, rbSwitchKey;
+    public RadioButton radioButtonOff, radioButtonAuto, radioButtonKey; // Gates
+    public RadioButton radioButtonWalk, radioButtonRun;
     public CheckBox checkSwitch, checkCoords, checkGates, checkWalkToColorTile, checkThrough;
     public TextField textDelayGates, txtHotKeyGates, txtHotKeySwitches;
     public Text textConnected, textIndex,textCoords;
-    public Label labelHotKeyGates, labelSwitches;
-
+    public Label labelHotKeyGates;
     TextInputControl lastInputControl = null;
 
     private HMessage _hMessage;
@@ -95,6 +96,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
 
     Timer timerGate = new Timer(1, e -> passGate());
+    Timer timerSwitch = new Timer(1, e -> hitSwitch());
 
     @Override
     public void nativeKeyTyped(NativeKeyEvent nativeKeyEvent) {}
@@ -112,7 +114,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                     Platform.runLater(()-> radioButtonKey.setText(String.format("Key [%s]", keyText)));
                 }
                 else if(element.equals(txtHotKeySwitches)){
-                    Platform.runLater(()-> labelSwitches.setText(String.format("Press key [%s] to give double click in the switch", keyText)));
+                    Platform.runLater(()-> rbSwitchKey.setText(String.format("key [%s]", keyText)));
                 }
                 // lastInputControl = element;
                 Platform.runLater(()-> labelHotKeyGates.requestFocus());    // Le da el foco al label :O
@@ -124,8 +126,10 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                             try { passGate(); } catch (Exception ignored) { }
                         }
                     }
-                    if(keyText.equals(txtHotKeySwitches.getText())){
-                        handleSwitch();
+                    if(rbSwitchKey.isSelected()){
+                        if(keyText.equals(txtHotKeySwitches.getText())){
+                            try { hitSwitch(); } catch (Exception ignored) { }
+                        }
                     }
                 }
             }
@@ -147,7 +151,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public void userInitializer(){
         yourIndex = -1;
         textConnected.setText("Connected to domain: " + codeToDomainMap.get(host));
-        radioButtonAuto.setStyle("-fx-text-fill: cyan;");
+        // radioButtonAuto.setStyle("-fx-text-fill: cyan;");
         // textConnected.setFill(Paint.valueOf("BLUE")); // Example: "GREEN" or "#008000"
 
         // When its sent, get UserObject packet
@@ -281,6 +285,43 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         // Intercepts when a furni is moved from one place to another with wired (For example a color tile)
         intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", this::interceptSlideObjectBundle);
 
+        // It should be intercepted when a furni is moved with wired...
+        intercept(HMessage.Direction.TOCLIENT, "WiredFurniMove", hMessage -> {
+            // {in:WiredFurniMove}{i:9}{i:16}{i:7}{i:18}{s:"0.15"}{s:"0.15"}{i:777439260}{i:500}{i:4}
+            int oldX = hMessage.getPacket().readInteger();
+            int oldY = hMessage.getPacket().readInteger();
+            int newX = hMessage.getPacket().readInteger();
+            int newY = hMessage.getPacket().readInteger();
+            String idk1 = hMessage.getPacket().readString();
+            String idk2 = hMessage.getPacket().readString();
+            int idWiredMoving = hMessage.getPacket().readInteger();
+
+            if (listGates.contains(idWiredMoving)){ // There are mazes where the gates move with wired
+                floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY)); // Updates the map (Very important)
+            }
+
+            if(listSwitches.contains(idWiredMoving)){
+                floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
+            }
+        });
+
+        // It seems to be called when a furni is turned or moved
+        intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", hMessage -> {
+            int FurniId = hMessage.getPacket().readInteger();
+            int NotUse = hMessage.getPacket().readInteger();
+            int xCoord = hMessage.getPacket().readInteger();
+            int yCoord = hMessage.getPacket().readInteger();
+            int Revolution = hMessage.getPacket().readInteger();
+
+            if (listGates.contains(FurniId)){ // There are mazes where the gates move with wired
+                floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord, yCoord)); // Updates the map (Very important)
+            }
+
+            if (listSwitches.contains(FurniId)){
+                floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord,yCoord));
+            }
+        });
+
         intercept(HMessage.Direction.TOSERVER, "UseFurniture", this::interceptUseFurniture);
 
         // Intercepts when a furni change the state through wired (In this case a color tile)
@@ -293,23 +334,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                     colorTile.setStateColor(stateColor); // Al cambiar el estado del color, actualiza los parametros de la lista!
                     // System.out.println("id: " + colorTile.getTileId() + " ; stateColor: " + colorTile.getStateColor());
                 }
-            }
-        });
-
-        // It seems to be called when a furni is turned or moved
-        intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", hMessage -> {
-            int FurniID = hMessage.getPacket().readInteger();
-            int NotUse = hMessage.getPacket().readInteger();
-            int xCoord = hMessage.getPacket().readInteger();
-            int yCoord = hMessage.getPacket().readInteger();
-            int Revolution = hMessage.getPacket().readInteger();
-
-            if (listGates.contains(FurniID)){ // There are mazes where the gates move with wired
-                floorItemsID_HPoint.replace(FurniID, new HPoint(xCoord, yCoord)); // Updates the map (Very important)
-            }
-
-            if (listSwitches.contains(FurniID)){
-                floorItemsID_HPoint.replace(FurniID, new HPoint(xCoord,yCoord));
             }
         });
 
@@ -575,7 +599,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         listSwitches.clear();
         Platform.runLater(()-> checkSwitch.setText("Switch Furnis (" + listSwitches.size() + ")"));
         sendToClient(new HPacket("{in:Chat}{i:999}{s:\"The list of switches has been removed successfully\"}{i:0}{i:19}{i:0}{i:-1}"));
-        // sendToClient(new HPacket("Chat", HMessage.Direction.TOCLIENT, 999, "The list of switches has been removed successfully", 0, 19, 0, -1));
         try{
             _hMessage.setBlocked(true);
         }catch (NullPointerException ignored){}
@@ -590,6 +613,18 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
         else if(radioButtonKey.isSelected()){
             if(timerGate.isRunning()){ timerGate.stop();}
+        }
+    }
+
+    public void handleRadioButtonsSwitch(ActionEvent actionEvent) {
+        if(rbSwitchOff.isSelected()){
+            if(timerSwitch.isRunning()){ timerSwitch.stop();}
+        }
+        else if(rbSwitchAuto.isSelected()){
+            timerSwitch.start();
+        }
+        else if(rbSwitchKey.isSelected()){
+            if(timerSwitch.isRunning()){ timerSwitch.stop();}
         }
     }
 
@@ -646,34 +681,35 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }catch (ConcurrentModificationException ignored) {}
     }
 
-    public void handleSwitch(){
-        // El orden de seleccion con los interruptores importa si se encuentran pegadas, pero aplicar un delay parece solucionarlo
-        for(Integer switchId: listSwitches){ // Iterate through Java List
-            int coordXSwitch = floorItemsID_HPoint.get(switchId).getX();
-            int coordYSwitch = floorItemsID_HPoint.get(switchId).getY();
+    public void hitSwitch(){
+        try{
+            // El orden de seleccion con los interruptores importa si se encuentran pegadas, pero aplicar un delay parece solucionarlo
+            for(Integer switchId: listSwitches){ // Iterate through Java List
+                int coordXSwitch = floorItemsID_HPoint.get(switchId).getX();
+                int coordYSwitch = floorItemsID_HPoint.get(switchId).getY();
 
-            // ---Case example of coords --- //
-            // UserCoord (3, 6); SwitchCoord (4, 6) OR UserCoord (5, 6); SwitchCoord (4, 6)
-            if((currentX == coordXSwitch - 1 && currentY == coordYSwitch) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch)){
-                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
-                Delay();
+                // ---Case example of coords --- //
+                // UserCoord (3, 6); SwitchCoord (4, 6) OR UserCoord (5, 6); SwitchCoord (4, 6)
+                if((currentX == coordXSwitch - 1 && currentY == coordYSwitch) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch)){
+                    sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
+                    Delay();
+                }
+                // UserCoord (4, 5); SwitchCoord (4, 6) OR UserCoord (4, 7); SwitchCoord (4, 6)
+                else if((currentX == coordXSwitch && currentY == coordYSwitch - 1) || (currentX == coordXSwitch && currentY == coordYSwitch + 1)){
+                    sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
+                    Delay();
+                }
+                // UserCoord (3, 5); SwitchCoord (4, 6) OR UserCoord (5, 7); SwitchCoord (4, 6) [LEFT DIAGONAL]
+                else if((currentX == coordXSwitch - 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch + 1)){
+                    sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
+                    Delay();
+                }
+                // UserCoord (5, 5); SwitchCoord (4, 6) OR UserCoord (3, 7); SwitchCoord (4, 6) [RIGHT DIAGONAL]
+                else if((currentX == coordXSwitch + 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch - 1 && currentY == coordYSwitch + 1)){
+                    sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
+                    Delay();
+                }
             }
-            // UserCoord (4, 5); SwitchCoord (4, 6) OR UserCoord (4, 7); SwitchCoord (4, 6)
-            else if((currentX == coordXSwitch && currentY == coordYSwitch - 1) || (currentX == coordXSwitch && currentY == coordYSwitch + 1)){
-                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
-                Delay();
-            }
-            // UserCoord (3, 5); SwitchCoord (4, 6) OR UserCoord (5, 7); SwitchCoord (4, 6) [LEFT DIAGONAL]
-            else if((currentX == coordXSwitch - 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch + 1 && currentY == coordYSwitch + 1)){
-                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
-                Delay();
-            }
-            // UserCoord (5, 5); SwitchCoord (4, 6) OR UserCoord (3, 7); SwitchCoord (4, 6) [RIGHT DIAGONAL]
-            else if((currentX == coordXSwitch + 1 && currentY == coordYSwitch - 1) || (currentX == coordXSwitch - 1 && currentY == coordYSwitch + 1)){
-                sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
-                Delay();
-            }
-        }
         /* Ignore this logic
             try {
                     sendToServer(new HPacket("UseFurniture", HMessage.Direction.TOSERVER, listSwitches.get(k), 0));
@@ -682,6 +718,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 k = 0;
             }
         */
+        }catch (ConcurrentModificationException ignored) {}
     }
 
     public void handleMouseDragged(MouseEvent event) {
@@ -704,4 +741,5 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         Stage stage = (Stage) ((Node)event.getSource()).getScene().getWindow();
         stage.setIconified(true);
     }
+
 }
