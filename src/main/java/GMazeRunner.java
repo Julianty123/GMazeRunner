@@ -79,7 +79,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public double xFrame, yFrame;
 
     private static final Set<String> setGates = new HashSet<>(Arrays.asList("one_way_door*1", "one_way_door*2", "one_way_door*3",
-            "one_way_door*4", "one_way_door*5", "one_way_door*6", "one_way_door*7", "one_way_door*8", "one_way_door*9"));
+            "one_way_door*4", "one_way_door*5", "one_way_door*6", "one_way_door*7", "one_way_door*8", "one_way_door*9", "onewaydoor_c22_rosegold"));
     private static final Set<String> setSwitches = new HashSet<>(Arrays.asList("wf_floor_switch1", "wf_floor_switch2"));
     private static final TreeMap<String, String> codeToDomainMap = new TreeMap<>();
     static {
@@ -535,6 +535,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 HPoint hPoint = new HPoint(hFloorItem.getTile().getX(), hFloorItem.getTile().getY(), hFloorItem.getTile().getZ());
                 if(!floorItemsID_HPoint.containsKey(hFloorItem.getId())){ // Entra al condicional si no contiene la id especificada
                     floorItemsID_HPoint.put(hFloorItem.getId(), hPoint);
+
                     // Mirar si se puede usar forEach o algo asi...
                     for(String classNameGate: setGates){
                         // Check if there are those unique id or type id is in the room (This depends on the hotel you are connected)

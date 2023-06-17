@@ -15,12 +15,12 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<AnchorPane fx:id="anchorPane" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="621.0" prefWidth="374.0" style="-fx-background-color: #222222; -fx-background-radius: 10; -fx-effect: innershadow(gaussian, #d58512, 10, 0, 0, 3);" stylesheets="@GMazeRunner.css" xmlns="http://javafx.com/javafx/18" xmlns:fx="http://javafx.com/fxml/1" fx:controller="GMazeRunner">
+<AnchorPane fx:id="anchorPane" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="616.0" prefWidth="374.0" style="-fx-background-color: #222222; -fx-background-radius: 10; -fx-effect: innershadow(gaussian, #d58512, 10, 0, 0, 3);" stylesheets="@GMazeRunner.css" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="GMazeRunner">
    <Text fx:id="textConnected" fill="WHITE" layoutX="74.0" layoutY="30.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Connected to domain:" textAlignment="CENTER" wrappingWidth="221.56787109375" />
-    <TabPane layoutX="11.0" layoutY="35.0" prefHeight="605.0" prefWidth="363.0" tabClosingPolicy="UNAVAILABLE">
+    <TabPane layoutX="11.0" layoutY="35.0" prefHeight="621.0" prefWidth="363.0" tabClosingPolicy="UNAVAILABLE">
         <Tab text="Control">
             <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="580.0" prefWidth="363.0">
-                <Pane layoutX="31.0" layoutY="188.0" prefHeight="95.0" prefWidth="291.0" style="-fx-border-radius: 20px; -fx-border-color: #8888;">
+                <Pane layoutX="31.0" layoutY="189.0" prefHeight="95.0" prefWidth="291.0" style="-fx-border-radius: 20px; -fx-border-color: #8888;">
                     <CheckBox fx:id="checkGates" layoutX="22.0" layoutY="51.0" mnemonicParsing="false" text="Catch Gates (0)" />
                <Button layoutX="158.0" layoutY="42.0" mnemonicParsing="false" onAction="#handleDeleteGates" prefHeight="39.0" prefWidth="111.0" text="Delete Gates" />
                <RadioButton fx:id="radioButtonOff" layoutX="39.0" layoutY="13.0" mnemonicParsing="false" onAction="#handleRadioButtonsGate" selected="true" text="Off" textFill="RED">
@@ -30,13 +30,13 @@
                </RadioButton>
                <RadioButton fx:id="radioButtonAuto" layoutX="101.0" layoutY="13.0" mnemonicParsing="false" onAction="#handleRadioButtonsGate" text="Auto" textFill="AQUA" toggleGroup="$g" />
                <RadioButton fx:id="radioButtonKey" layoutX="174.0" layoutY="13.0" mnemonicParsing="false" onAction="#handleRadioButtonsGate" text="Key []" textFill="#1c9718" toggleGroup="$g" />
-               <Label layoutX="123.0" layoutY="-13.0" style="-fx-text-fill: #d58512;" text="Gates">
+               <Label layoutX="123.0" layoutY="-13.0" style="-fx-text-fill: #d58512; -fx-background-color: #222222;" text="Gates">
                   <font>
                      <Font size="18.0" />
                   </font>
                </Label>
                 </Pane>
-                <Text fx:id="textCoords" fill="WHITE" layoutX="194.0" layoutY="31.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Coords: ( 0, 0 )" />
+                <Text fx:id="textCoords" fill="WHITE" layoutX="195.0" layoutY="31.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Coords: ( 0, 0 )" />
                 <Pane layoutX="18.0" layoutY="84.0" prefHeight="91.0" prefWidth="326.0" style="-fx-border-radius: 10px; -fx-border-color: #8888;">
                     <Button layoutX="148.0" layoutY="16.0" mnemonicParsing="false" onAction="#handleFire" prefHeight="35.0" prefWidth="61.0" text="Fire" />
                     <CheckBox fx:id="checkCoords" layoutX="9.0" layoutY="25.0" mnemonicParsing="false" text="Catch Coords (0)" />
@@ -56,10 +56,10 @@
                     </toggleGroup>
                 </RadioButton>
                 <RadioButton fx:id="radioButtonRun" layoutX="155.0" layoutY="48.0" mnemonicParsing="false" selected="true" style="-fx-text-fill: white;" text="Run (Recommended)" toggleGroup="$a" />
-                <Pane layoutX="28.0" layoutY="326.0" prefHeight="114.0" prefWidth="306.0" style="-fx-border-radius: 20px; -fx-border-color: #8888;">
+                <Pane layoutX="15.0" layoutY="333.0" prefHeight="114.0" prefWidth="324.0" style="-fx-border-radius: 20px; -fx-border-color: #8888;">
                     <CheckBox fx:id="checkSwitch" layoutX="25.0" layoutY="69.0" mnemonicParsing="false" text="Switch Furnis (0)" />
-               <Button layoutX="151.0" layoutY="58.0" mnemonicParsing="false" onAction="#handleDeleteSwitches" prefHeight="40.0" prefWidth="133.0" text="Delete Switches" />
-                    <Label layoutX="118.0" layoutY="-15.0" style="-fx-text-fill: #d58512;" text="Switches">
+               <Button layoutX="172.0" layoutY="60.0" mnemonicParsing="false" onAction="#handleDeleteSwitches" prefHeight="40.0" prefWidth="133.0" text="Delete Switches" />
+                    <Label layoutX="118.0" layoutY="-15.0" style="-fx-text-fill: #d58512; -fx-background-color: #222222;" text="Switches">
                   <font>
                      <Font size="18.0" />
                   </font>
@@ -82,7 +82,7 @@
                     </Label>
                     <CheckBox fx:id="checkWalkToColorTile" layoutX="53.0" layoutY="21.0" mnemonicParsing="false" text="Walk to Color Tile" />
                 </Pane>
-            <CheckBox fx:id="checkThrough" layoutX="107.0" layoutY="543.0" mnemonicParsing="false" text="Click through to users" />
+            <CheckBox fx:id="checkThrough" layoutX="95.0" layoutY="545.0" mnemonicParsing="false" text="Click through to users" />
             </AnchorPane>
         </Tab>
         <Tab text="How to Use &amp; Commands">
