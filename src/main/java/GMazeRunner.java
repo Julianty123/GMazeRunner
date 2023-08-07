@@ -36,7 +36,7 @@ import java.util.logging.LogManager;
 @ExtensionInfo(
         Title = "GMazeRunner",
         Description = "It could be better",
-        Version = "1.4.9",
+        Version = "1.5.0",
         Author = "Julianty"
 )
 
@@ -150,7 +150,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void userInitializer(){
         yourIndex = -1;
-        textConnected.setText("Connected to domain: " + codeToDomainMap.get(host));
         // radioButtonAuto.setStyle("-fx-text-fill: cyan;");
         // textConnected.setFill(Paint.valueOf("BLUE")); // Example: "GREEN" or "#008000"
 
@@ -185,7 +184,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     protected void onHide() {
         yourIndex = -1; checkThrough.setSelected(false);
         sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
-        //GlobalScreen.removeNativeKeyListener(this);
         try {
             GlobalScreen.unregisterNativeHook();
             System.out.println("Hook disabled");
@@ -197,11 +195,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     @Override
     protected void onStartConnection() {
-        new Thread(() -> {
-            System.out.println("Getting GameData...");
-            try { getGameFurniData(); } catch (Exception ignored) { }
-            System.out.println("Gamedata Retrieved!");
-        }).start();
+        new Thread(this::getGameFurniData).start();
     }
 
     @Override
@@ -210,7 +204,11 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             primaryStage.setOnCloseRequest(e -> { });   */
 
         onConnect((host, port, APIVersion, versionClient, client) -> {
-            this.host = host.substring(5, 7);   // Example: Of "game-es.habbo.com" only takes "es"
+            try{
+                this.host = host.substring(5, 7);   // Example: Of "game-es.habbo.com" only takes "es"
+            }catch (StringIndexOutOfBoundsException e){
+                e.printStackTrace(); // Probably get this exception if you try to connect to a holo
+            }
         });
 
         /* Cuando pasa el mouse por encima de un elemento, se cambia el color del texto
@@ -221,7 +219,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             else{
                 radioButtonAuto.setStyle("-fx-text-fill: black;");
             }
-        });*/
+        }); */
 
         checkThrough.setOnAction(event ->{
             if(checkThrough.isSelected()){
@@ -629,26 +627,33 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    public void getGameFurniData() throws Exception{
-        /*  https://www.habbo.es/gamedata/furnidata/1 -> Este link redirecciona a
+    public void getGameFurniData() {
+        try{
+            /*  https://www.habbo.es/gamedata/furnidata/1 -> Este link redirecciona a
             https://www.habbo.es/gamedata/furnidata/4b7d10b21957494413fdf42d51eca53b88bc0e12 -> Info organizado como lista []
             https://www.habbo.es/gamedata/furnidata_json/1 -> Info organizada como diccionario {}
             https://www.habbo.es/gamedata/furnidata_xml/1 -> Info organizada como XML <>   */
 
-        String str = "https://www.habbo%s/gamedata/furnidata_json/1";
-        JSONObject jsonObj = new JSONObject(IOUtils.toString(new URL(String.format(str, codeToDomainMap.get(host))).openStream(), StandardCharsets.UTF_8));
-        JSONArray floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
-        floorJson.forEach(o -> {
-            JSONObject item = (JSONObject)o;
-            nameToTypeIdFloor.put(item.getString("classname"), item.getInt("id"));
-        });
-        /* Code By Sirjonasxx
-        JSONArray wallJson = object.getJSONObject("wallitemtypes").getJSONArray("furnitype");
-        wallJson.forEach(o -> {
+            String str = "https://www.habbo%s/gamedata/furnidata_json/1";
+            JSONObject jsonObj = new JSONObject(IOUtils.toString(new URL(String.format(str, codeToDomainMap.get(host))).openStream(), StandardCharsets.UTF_8));
+            JSONArray floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
+            floorJson.forEach(o -> {
                 JSONObject item = (JSONObject)o;
-                nameToTypeidWall.put(item.getString("classname"), item.getInt("id"));
-                typeIdToNameWall.put(item.getInt("id"), item.getString("classname"));
-        }); */
+                nameToTypeIdFloor.put(item.getString("classname"), item.getInt("id"));
+            });
+            textConnected.setText("Connected to domain: " + codeToDomainMap.get(host));
+
+            /* Code By Sirjonasxx
+            JSONArray wallJson = object.getJSONObject("wallitemtypes").getJSONArray("furnitype");
+            wallJson.forEach(o -> {
+                    JSONObject item = (JSONObject)o;
+                    nameToTypeidWall.put(item.getString("classname"), item.getInt("id"));
+                    typeIdToNameWall.put(item.getInt("id"), item.getString("classname"));
+            }); */
+        }catch (Exception e){
+            textConnected.setText("Error: " + e.getMessage());
+            e.printStackTrace(); // Again, get exception if you are connecting to holos
+        }
     }
 
     public void passGate(){
