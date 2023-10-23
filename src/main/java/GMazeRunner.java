@@ -27,6 +27,7 @@ import org.apache.commons.io.IOUtils;       // Important library for use json!
 import org.json.JSONArray;
 import java.net.URL;
 import javax.swing.Timer;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.RejectedExecutionException;
@@ -55,8 +56,9 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public RadioButton radioButtonWalk, radioButtonRun;
     public CheckBox checkSwitch, checkCoords, checkGates, checkWalkToColorTile, checkThrough;
     public TextField textDelayGates, txtHotKeyGates, txtHotKeySwitches;
-    public Text textConnected, textIndex,textCoords;
+    public Text textIndex, textCoords;
     public Label labelHotKeyGates;
+    public Label labelConnected;
     TextInputControl lastInputControl = null;
 
     private HMessage _hMessage;
@@ -69,7 +71,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     TreeMap<Integer,HPoint> floorItemsID_HPoint = new TreeMap<>();      // Key, Value
     TreeMap<String, Integer> nameToTypeIdFloor = new TreeMap<>();
 
-    public String host;
     public int idTileAvoid;
     public String flagWord = "", yourName;
     public int yourIndex = -1;
@@ -81,17 +82,18 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     private static final Set<String> setGates = new HashSet<>(Arrays.asList("one_way_door*1", "one_way_door*2", "one_way_door*3",
             "one_way_door*4", "one_way_door*5", "one_way_door*6", "one_way_door*7", "one_way_door*8", "one_way_door*9", "onewaydoor_c22_rosegold"));
     private static final Set<String> setSwitches = new HashSet<>(Arrays.asList("wf_floor_switch1", "wf_floor_switch2"));
-    private static final TreeMap<String, String> codeToDomainMap = new TreeMap<>();
+    private static final TreeMap<String, String> hostToDomain = new TreeMap<>();
     static {
-        codeToDomainMap.put("br", ".com.br");
-        codeToDomainMap.put("de", ".de");
-        codeToDomainMap.put("es", ".es");
-        codeToDomainMap.put("fi", ".fi");
-        codeToDomainMap.put("fr", ".fr");
-        codeToDomainMap.put("it", ".it");
-        codeToDomainMap.put("nl", ".nl");
-        codeToDomainMap.put("tr", ".com.tr");
-        codeToDomainMap.put("us", ".com");
+        hostToDomain.put("game-es.habbo.com", "https://www.habbo.es/gamedata/furnidata_json/1");
+        hostToDomain.put("game-br.habbo.com", "https://www.habbo.com.br/gamedata/furnidata_json/1");
+        hostToDomain.put("game-tr.habbo.com", "https://www.habbo.com.tr/gamedata/furnidata_json/1");
+        hostToDomain.put("game-us.habbo.com", "https://www.habbo.com/gamedata/furnidata_json/1");
+        hostToDomain.put("game-de.habbo.com", "https://www.habbo.de/gamedata/furnidata_json/1");
+        hostToDomain.put("game-fi.habbo.com", "https://www.habbo.fi/gamedata/furnidata_json/1");
+        hostToDomain.put("game-fr.habbo.com", "https://www.habbo.fr/gamedata/furnidata_json/1");
+        hostToDomain.put("game-it.habbo.com", "https://www.habbo.it/gamedata/furnidata_json/1");
+        hostToDomain.put("game-nl.habbo.com", "https://www.habbo.nl/gamedata/furnidata_json/1");
+        hostToDomain.put("game-s2.habbo.com", "https://sandbox.habbo.com/gamedata/furnidata_json/1");
     }
 
 
@@ -194,22 +196,11 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     @Override
-    protected void onStartConnection() {
-        new Thread(this::getGameFurniData).start();
-    }
-
-    @Override
     protected void initExtension() {
         /*  primaryStage.setOnShowing(s -> {});
             primaryStage.setOnCloseRequest(e -> { });   */
 
-        onConnect((host, port, APIVersion, versionClient, client) -> {
-            try{
-                this.host = host.substring(5, 7);   // Example: Of "game-es.habbo.com" only takes "es"
-            }catch (StringIndexOutOfBoundsException e){
-                e.printStackTrace(); // Probably get this exception if you try to connect to a holo
-            }
-        });
+        onConnect((host, port, APIVersion, versionClient, client) -> getGameData(host)); // game-es.habbo.com
 
         /* Cuando pasa el mouse por encima de un elemento, se cambia el color del texto
         radioButtonAuto.hoverProperty().addListener((observable, oldValue, newValue) -> {
@@ -565,7 +556,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void handleFire() {
         if(coordTiles.size() != 0){
-            sendToClient(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(0).getX(), coordTiles.get(0).getY())));
+            sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(0).getX(), coordTiles.get(0).getY())));
         }
     }
 
@@ -627,33 +618,41 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    public void getGameFurniData() {
-        try{
-            /*  https://www.habbo.es/gamedata/furnidata/1 -> Este link redirecciona a
-            https://www.habbo.es/gamedata/furnidata/4b7d10b21957494413fdf42d51eca53b88bc0e12 -> Info organizado como lista []
-            https://www.habbo.es/gamedata/furnidata_json/1 -> Info organizada como diccionario {}
-            https://www.habbo.es/gamedata/furnidata_xml/1 -> Info organizada como XML <>   */
+    public void getGameData(String host) {
+        new Thread(()->{
+            try{
+//                https://www.habbo.es/gamedata/furnidata/1 -> Este link redirecciona a
+//                https://www.habbo.es/gamedata/furnidata/4b7d10b21957494413fdf42d51eca53b88bc0e12 -> Info organizado como lista []
+//                https://www.habbo.es/gamedata/furnidata_json/1 -> Info organizada como diccionario {}
+//                https://www.habbo.es/gamedata/furnidata_xml/1 -> Info organizada como XML <>
 
-            String str = "https://www.habbo%s/gamedata/furnidata_json/1";
-            JSONObject jsonObj = new JSONObject(IOUtils.toString(new URL(String.format(str, codeToDomainMap.get(host))).openStream(), StandardCharsets.UTF_8));
-            JSONArray floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
-            floorJson.forEach(o -> {
-                JSONObject item = (JSONObject)o;
-                nameToTypeIdFloor.put(item.getString("classname"), item.getInt("id"));
-            });
-            textConnected.setText("Connected to domain: " + codeToDomainMap.get(host));
+                System.out.println("Getting GameData...");
+                String url = hostToDomain.get(host); // Throws exception if you are connecting to holos
+                URLConnection connection = (new URL(url)).openConnection();
+                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.95 Safari/537.11");
+                connection.connect();
 
-            /* Code By Sirjonasxx
-            JSONArray wallJson = object.getJSONObject("wallitemtypes").getJSONArray("furnitype");
-            wallJson.forEach(o -> {
+                JSONObject jsonObj = new JSONObject(IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8));
+
+                JSONArray floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
+                floorJson.forEach(o -> {
                     JSONObject item = (JSONObject)o;
-                    nameToTypeidWall.put(item.getString("classname"), item.getInt("id"));
-                    typeIdToNameWall.put(item.getInt("id"), item.getString("classname"));
-            }); */
-        }catch (Exception e){
-            textConnected.setText("Error: " + e.getMessage());
-            e.printStackTrace(); // Again, get exception if you are connecting to holos
-        }
+                    nameToTypeIdFloor.put(item.getString("classname"), item.getInt("id"));
+                });
+                Platform.runLater(()-> labelConnected.setText("Connected to domain: " + url));
+                System.out.println("Gamedata Retrieved!");
+
+                /* Code By Sirjonasxx
+                JSONArray wallJson = object.getJSONObject("wallitemtypes").getJSONArray("furnitype");
+                wallJson.forEach(o -> {
+                        JSONObject item = (JSONObject)o;
+                        nameToTypeidWall.put(item.getString("classname"), item.getInt("id"));
+                        typeIdToNameWall.put(item.getInt("id"), item.getString("classname"));
+                }); */
+            }catch (Exception e){
+                Platform.runLater(()-> labelConnected.setText("Error: " + e.getMessage()));
+            }
+        }).start();
     }
 
     public void passGate(){

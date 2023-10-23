@@ -40,24 +40,24 @@
 }
 
 #imageClose { /* Evita bug, cuando el puntero sale de la imagen */
-    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/closeButtonDark.png");
+    -fx-image: url("file:///C:/Users/DORADITO/IdeaProjects/GMazeRunner/src/main/img/closeButtonDark.png");
 }
 #imageClose:hover { /* Cuando el puntero se pasa sobra la imagen (boton cerrar app) */
-    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/closeButtonHover.png");
+    -fx-image: url("file:///C:/Users/DORADITO/IdeaProjects/GMazeRunner/src/main/img/closeButtonHover.png");
     -fx-cursor: hand; /* Muestra una mano */
 }
 #imageClose:pressed { /* Cuando se presiona la imagen algun efecto deberia pasar */
-    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/closeButtonPressed.png");
+    -fx-image: url("file:///C:/Users/DORADITO/IdeaProjects/GMazeRunner/src/main/img/closeButtonPressed.png");
     -fx-background-color: rgba(232, 17, 35, 0.8);
 }
 
 #imageMinimize {
-    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDark.png");
+    -fx-image: url("file:///C:/Users/DORADITO/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDark.png");
 }
 #imageMinimize:hover {
-    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDarkHover.png");
+    -fx-image: url("file:///C:/Users/DORADITO/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDarkHover.png");
     -fx-cursor: hand;
 }
 #imageMinimize:pressed {
-    -fx-image: url("file:///C:/Users/Administrador/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDarkPressed.png");
+    -fx-image: url("file:///C:/Users/DORADITO/IdeaProjects/GMazeRunner/src/main/img/minimizeButtonDarkPressed.png");
 }   /* ../../src/main/img/minimizeButtonDark.png (los dos puntos significa una carpeta anterior) */
