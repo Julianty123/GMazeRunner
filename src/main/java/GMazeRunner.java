@@ -51,14 +51,13 @@ import java.util.logging.LogManager;
  */
 
 public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
-    public RadioButton rbSwitchOff, rbSwitchAuto, rbSwitchKey;
-    public RadioButton radioButtonOff, radioButtonAuto, radioButtonKey; // Gates
-    public RadioButton radioButtonWalk, radioButtonRun;
+    public AnchorPane anchorPane;
+    public RadioButton rbSwitchOff, rbSwitchAuto, rbSwitchKey,
+            radioButtonOff, radioButtonAuto, radioButtonKey, radioButtonWalk, radioButtonRun; // Gates
     public CheckBox checkSwitch, checkCoords, checkGates, checkWalkToColorTile, checkThrough;
     public TextField textDelayGates, txtHotKeyGates, txtHotKeySwitches;
     public Text textIndex, textCoords;
-    public Label labelHotKeyGates;
-    public Label labelConnected;
+    public Label labelHotKeyGates, labelConnected;
     TextInputControl lastInputControl = null;
 
     private HMessage _hMessage;
@@ -66,10 +65,9 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public List<Integer> listGates = new LinkedList<>();
     public List<Integer> listSwitches = new LinkedList<>();
     public List<ColorTile> listColorTiles = new LinkedList<>();
-    public AnchorPane anchorPane;
 
-    TreeMap<Integer,HPoint> floorItemsID_HPoint = new TreeMap<>();      // Key, Value
-    TreeMap<String, Integer> nameToTypeIdFloor = new TreeMap<>();
+    public TreeMap<Integer,HPoint> floorItemsID_HPoint = new TreeMap<>();      // Key, Value
+    public TreeMap<String, Integer> nameToTypeIdFloor = new TreeMap<>();
 
     public int idTileAvoid;
     public String flagWord = "", yourName;
@@ -78,6 +76,9 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public int currentX, currentY;
     public int coordClickX, coordClickY;
     public double xFrame, yFrame;
+
+    public Timer timerGate = new Timer(1, e -> passGate());
+    public Timer timerSwitch = new Timer(1, e -> hitSwitch());
 
     private static final Set<String> setGates = new HashSet<>(Arrays.asList("one_way_door*1", "one_way_door*2", "one_way_door*3",
             "one_way_door*4", "one_way_door*5", "one_way_door*6", "one_way_door*7", "one_way_door*8", "one_way_door*9", "onewaydoor_c22_rosegold"));
@@ -95,10 +96,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         hostToDomain.put("game-nl.habbo.com", "https://www.habbo.nl/gamedata/furnidata_json/1");
         hostToDomain.put("game-s2.habbo.com", "https://sandbox.habbo.com/gamedata/furnidata_json/1");
     }
-
-
-    Timer timerGate = new Timer(1, e -> passGate());
-    Timer timerSwitch = new Timer(1, e -> hitSwitch());
 
     @Override
     public void nativeKeyTyped(NativeKeyEvent nativeKeyEvent) {}
@@ -212,140 +209,124 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             }
         }); */
 
-        checkThrough.setOnAction(event ->{
-            if(checkThrough.isSelected()){
-                sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
-            }
-            else {
-                sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
-            }
-        });
+        checkThrough.setOnAction(event ->
+                sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected()))));
 
-        // Response of packet InfoRetrieve
-        intercept(HMessage.Direction.TOCLIENT, "UserObject", hMessage -> {
-            // Gets Name and ID in order.
-            int YourID = hMessage.getPacket().readInteger();
-            yourName = hMessage.getPacket().readString();
-        });
-
-        // Response of packet AvatarExpression
-        intercept(HMessage.Direction.TOCLIENT, "Expression", hMessage -> {
-            // First integer is index in room, second is animation id, i think
-            if(primaryStage.isShowing() && yourIndex == -1){ // this could avoid any bug
-                yourIndex = hMessage.getPacket().readInteger();
-                textIndex.setText("Index: " + yourIndex);  // GUI updated!
-            }
-        });
-
-        intercept(HMessage.Direction.TOSERVER, "Chat", hMessage -> {
-            if(primaryStage.isShowing()){
-                _hMessage = hMessage; // public variable
-                String message = hMessage.getPacket().readString();
-                if(message.equalsIgnoreCase(":tileavoid")){
-                    sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Double click on the tile you want to avoid\"}{i:0}{i:19}{i:0}{i:-1}")));
-                    hMessage.setBlocked(true);
-                    flagWord = "TILEAVOID";   hMessage.setBlocked(true);
-                }
-                else if(message.equalsIgnoreCase(":deletecoords")){  // or .toLowerCase()
-                    handleDeleteCoords();
-                }
-                else if(message.equalsIgnoreCase(":deletegates")){
-                    handleDeleteGates();
-                }
-                else if(message.equalsIgnoreCase(":deleteswitches")){
-                    handleDeleteSwitches();
-                }
-            }
-        });
-
+        intercept(HMessage.Direction.TOCLIENT, "UserObject", this::interceptUserObject); // Response of packet InfoRetrieve
+        intercept(HMessage.Direction.TOCLIENT, "Expression", this::interceptExpression); // Response of packet AvatarExpression
+        intercept(HMessage.Direction.TOSERVER, "Chat", this::interceptChat);
         intercept(HMessage.Direction.TOSERVER, "MoveAvatar", this::interceptMoveAvatar);
+        intercept(HMessage.Direction.TOSERVER, "EnterOneWayDoor", this::interceptEnterOneWayDoor);
+        intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", this::interceptSlideObjectBundle); // When a furniture is moved with wired
 
-        intercept(HMessage.Direction.TOSERVER, "EnterOneWayDoor", hMessage -> {
-            if(checkGates.isSelected()){
-                int GateID = hMessage.getPacket().readInteger();
-                if (!listGates.contains(GateID)){
-                    listGates.add(GateID);
-                    Platform.runLater(() -> checkGates.setText("Catch Gates (" + listGates.size() + ")"));
-                    sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Gate with id '%s' added! \"}{i:0}{i:25}{i:0}{i:-1}", GateID)));
-                }
-            }
-        });
-
-        // Intercepts when a furni is moved from one place to another with wired (For example a color tile)
-        intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", this::interceptSlideObjectBundle);
-
-        // It should be intercepted when a furni is moved with wired...
-        intercept(HMessage.Direction.TOCLIENT, "WiredFurniMove", hMessage -> {
-            // {in:WiredFurniMove}{i:9}{i:16}{i:7}{i:18}{s:"0.15"}{s:"0.15"}{i:777439260}{i:500}{i:4}
-            int oldX = hMessage.getPacket().readInteger();
-            int oldY = hMessage.getPacket().readInteger();
-            int newX = hMessage.getPacket().readInteger();
-            int newY = hMessage.getPacket().readInteger();
-            String idk1 = hMessage.getPacket().readString();
-            String idk2 = hMessage.getPacket().readString();
-            int idWiredMoving = hMessage.getPacket().readInteger();
-
-            if (listGates.contains(idWiredMoving)){ // There are mazes where the gates move with wired
-                floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY)); // Updates the map (Very important)
-            }
-
-            if(listSwitches.contains(idWiredMoving)){
-                floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
-            }
-        });
-
-        // It seems to be called when a furni is turned or moved
-        intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", hMessage -> {
-            int FurniId = hMessage.getPacket().readInteger();
-            int NotUse = hMessage.getPacket().readInteger();
-            int xCoord = hMessage.getPacket().readInteger();
-            int yCoord = hMessage.getPacket().readInteger();
-            int Revolution = hMessage.getPacket().readInteger();
-
-            if (listGates.contains(FurniId)){ // There are mazes where the gates move with wired
-                floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord, yCoord)); // Updates the map (Very important)
-            }
-
-            if (listSwitches.contains(FurniId)){
-                floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord,yCoord));
-            }
-        });
-
+        // It should be intercepted when a furni is moved with wired... (Pending for update, of course!)
+        intercept(HMessage.Direction.TOCLIENT, "WiredFurniMove", this::intercepWiredFurniMove);
+        intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", this::interceptObjectUpdate); // When changes the coord of furniture with wired, i think
         intercept(HMessage.Direction.TOSERVER, "UseFurniture", this::interceptUseFurniture);
 
-        // Intercepts when a furni change the state through wired (In this case a color tile)
-        intercept(HMessage.Direction.TOCLIENT, "ObjectDataUpdate", hMessage -> {
-            String furniId = hMessage.getPacket().readString();
-            int idk = hMessage.getPacket().readInteger();
-            String stateColor = hMessage.getPacket().readString();
-            for(ColorTile colorTile: listColorTiles){
-                if(colorTile.getTileId() == Integer.parseInt(furniId)){
-                    colorTile.setStateColor(stateColor); // Al cambiar el estado del color, actualiza los parametros de la lista!
-                    // System.out.println("id: " + colorTile.getTileId() + " ; stateColor: " + colorTile.getStateColor());
-                }
-            }
-        });
+        // Intercepts when a furni change the state through wired (for example a color tile)
+        intercept(HMessage.Direction.TOCLIENT, "ObjectDataUpdate", this::interceptObjectDataUpdate);
+        intercept(HMessage.Direction.TOCLIENT, "Objects", this::interceptObjects); // Intercepts when you entry to the room
 
-        // Intercepts when you entry to the room
-        intercept(HMessage.Direction.TOCLIENT, "Objects", this::interceptObjects);
-
-        // Intercept this packet when you enter or restart a room
-        intercept(HMessage.Direction.TOCLIENT, "Users", hMessage -> {
-            try {
-                HEntity[] roomUsersList = HEntity.parse(hMessage.getPacket());
-                for (HEntity hEntity: roomUsersList){
-                    if(hEntity.getName().equals(yourName)){    // In another room, the index changes
-                        yourIndex = hEntity.getIndex();      // The userindex has been restarted
-                        currentX = hEntity.getTile().getX();    currentY = hEntity.getTile().getY();
-                        textIndex.setText("Index: " + yourIndex);  // Add UserIndex to GUI
-                    }
-                    //System.out.println("stuff: " + Arrays.toString(hEntity.getStuff()));
-                }
-            } catch (Exception e) { e.printStackTrace(); }
-        });
-
-
+        intercept(HMessage.Direction.TOCLIENT, "Users", this::interceptUsers); // Intercept this packet when you enter or restart a room
         intercept(HMessage.Direction.TOCLIENT, "UserUpdate", this::interceptUserUpdate);
+    }
+
+    private void interceptUsers(HMessage hMessage) {
+        HPacket hPacket = hMessage.getPacket();
+        HEntity[] roomUsersList = HEntity.parse(hPacket);
+        for (HEntity hEntity: roomUsersList){
+            try {
+                if(hEntity.getName().equals(yourName)){ // In another room, the index changes
+                    yourIndex = hEntity.getIndex();      // The userindex has been restarted
+                    currentX = hEntity.getTile().getX();    currentY = hEntity.getTile().getY();
+                    textIndex.setText("Index: " + yourIndex);
+                }
+                //System.out.println("stuff: " + Arrays.toString(hEntity.getStuff()));
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+    }
+
+    private void interceptObjectDataUpdate(HMessage hMessage) {
+        String furniId = hMessage.getPacket().readString();
+        int idk = hMessage.getPacket().readInteger();
+        String stateColor = hMessage.getPacket().readString();
+        for(ColorTile colorTile: listColorTiles){
+            if(colorTile.getTileId() == Integer.parseInt(furniId)){
+                colorTile.setStateColor(stateColor); // Al cambiar el estado del color, actualiza los parametros de la lista!
+                // System.out.println("id: " + colorTile.getTileId() + " ; stateColor: " + colorTile.getStateColor());
+            }
+        }
+    }
+
+    private void interceptObjectUpdate(HMessage hMessage) {
+        int FurniId = hMessage.getPacket().readInteger();
+        int NotUse = hMessage.getPacket().readInteger();
+        int xCoord = hMessage.getPacket().readInteger();
+        int yCoord = hMessage.getPacket().readInteger();
+        int Revolution = hMessage.getPacket().readInteger();
+
+        if (listGates.contains(FurniId)){ // There are mazes where the gates move with wired
+            floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord, yCoord)); // Updates the map (Very important)
+        }
+
+        if (listSwitches.contains(FurniId)){
+            floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord,yCoord));
+        }
+    }
+
+    private void intercepWiredFurniMove(HMessage hMessage) {
+        // {in:WiredFurniMove}{i:9}{i:16}{i:7}{i:18}{s:"0.15"}{s:"0.15"}{i:777439260}{i:500}{i:4}
+        int oldX = hMessage.getPacket().readInteger();
+        int oldY = hMessage.getPacket().readInteger();
+        int newX = hMessage.getPacket().readInteger();
+        int newY = hMessage.getPacket().readInteger();
+        String idk1 = hMessage.getPacket().readString();
+        String idk2 = hMessage.getPacket().readString();
+        int idWiredMoving = hMessage.getPacket().readInteger();
+
+        // There are mazes where the gates move with wired, so its necessary to update the map
+        if (listGates.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
+        if(listSwitches.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
+    }
+
+    private void interceptEnterOneWayDoor(HMessage hMessage) {
+        if(checkGates.isSelected()){
+            int GateID = hMessage.getPacket().readInteger();
+            if (!listGates.contains(GateID)){
+                listGates.add(GateID);
+                Platform.runLater(() -> checkGates.setText("Catch Gates (" + listGates.size() + ")"));
+                sendToClient(new HPacket(String.format("{in:Chat}{i:999}{s:\"Gate with id '%s' added! \"}{i:0}{i:25}{i:0}{i:-1}", GateID)));
+            }
+        }
+    }
+
+    private void interceptChat(HMessage hMessage) {
+        if(primaryStage.isShowing()){
+            _hMessage = hMessage; // public variable
+            String message = hMessage.getPacket().readString();
+            if(message.equalsIgnoreCase(":tileavoid")){
+                sendToClient(new HPacket("{in:Chat}{i:999}{s:\"Double click on the tile you want to avoid\"}{i:0}{i:19}{i:0}{i:-1}"));
+                hMessage.setBlocked(true);
+                flagWord = "TILEAVOID";   hMessage.setBlocked(true);
+            }
+            else if(message.equalsIgnoreCase(":deletecoords")) handleDeleteCoords();
+            else if(message.equalsIgnoreCase(":deletegates")) handleDeleteGates();
+            else if(message.equalsIgnoreCase(":deleteswitches")) handleDeleteSwitches();
+        }
+    }
+
+    private void interceptExpression(HMessage hMessage) {
+        // First integer is index in room, second is animation id, i think
+        if(primaryStage.isShowing() && yourIndex == -1){ // this could avoid any bug
+            yourIndex = hMessage.getPacket().readInteger();
+            textIndex.setText("Index: " + yourIndex);
+        }
+    }
+
+    private void interceptUserObject(HMessage hMessage){
+        // Gets Name and ID in order.
+        int YourID = hMessage.getPacket().readInteger();    yourName = hMessage.getPacket().readString();
     }
 
     private void interceptMoveAvatar(HMessage hMessage) {
@@ -409,14 +390,11 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         int idCurrentFurniMoving = hMessage.getPacket().readInteger();
         String furniElevation = hMessage.getPacket().readString();
 
-        if (listGates.contains(idCurrentFurniMoving)){ // There are mazes where the gates move with wired
-            floorItemsID_HPoint.replace(idCurrentFurniMoving, new HPoint(newX,newY)); // Updates the map (Very important)
-        }
+        if (listGates.contains(idCurrentFurniMoving)) floorItemsID_HPoint.replace(idCurrentFurniMoving, new HPoint(newX,newY));
 
         for(ColorTile colorTile: listColorTiles){
-            if(colorTile.getTileId() == idCurrentFurniMoving){
-                colorTile.setTilePosition(new HPoint(newX, newY, Double.parseDouble(furniElevation))); // Se actualizan los parametros de la lista
-            }
+            if(colorTile.getTileId() == idCurrentFurniMoving)
+                colorTile.setTilePosition(new HPoint(newX, newY, Double.parseDouble(furniElevation))); // update the list parameters
         }
 
         if( idTileAvoid == idCurrentFurniMoving && Objects.equals(flagWord, "FIREAVOID")){
@@ -515,7 +493,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     public void interceptObjects(HMessage hMessage){
-        if(checkThrough.isSelected()){ sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", true))); }
+        if(checkThrough.isSelected()) sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", true)));
         try{
             listGates.clear();  listSwitches.clear();   listColorTiles.clear();     // Lists deleted!
             floorItemsID_HPoint.clear(); // Map deleted!
@@ -528,14 +506,10 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                     // Mirar si se puede usar forEach o algo asi...
                     for(String classNameGate: setGates){
                         // Check if there are those unique id or type id is in the room (This depends on the hotel you are connected)
-                        if(hFloorItem.getTypeId() == nameToTypeIdFloor.get(classNameGate)){
-                            listGates.add(hFloorItem.getId());
-                        }
+                        if(hFloorItem.getTypeId() == nameToTypeIdFloor.get(classNameGate)) listGates.add(hFloorItem.getId());
                     }
                     for(String classNameSwitch: setSwitches){
-                        if(hFloorItem.getTypeId() == nameToTypeIdFloor.get(classNameSwitch)){
-                            listSwitches.add(hFloorItem.getId());
-                        }
+                        if(hFloorItem.getTypeId() == nameToTypeIdFloor.get(classNameSwitch)) listSwitches.add(hFloorItem.getId());
                     }
                     if(hFloorItem.getTypeId() == nameToTypeIdFloor.get("wf_colortile")){
                             /*if( 5 == hPoint.getX() && (4 <= hPoint.getY() && 7 >= hPoint.getY())){ // Limita que furnis es para probar
@@ -555,66 +529,58 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     public void handleFire() {
-        if(coordTiles.size() != 0){
+        if(!coordTiles.isEmpty()){
             sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(0).getX(), coordTiles.get(0).getY())));
         }
     }
 
     // The server cannot be flooded with many packets or else they will be rejected, so the delay prevents that...
     public void Delay(){
-        try {
-            Thread.sleep(Integer.parseInt(textDelayGates.getText()));
-        } catch (InterruptedException ignored) { }
+        try { Thread.sleep(Integer.parseInt(textDelayGates.getText())); }
+        catch (InterruptedException ignored) { }
     }
 
     public void handleDeleteGates() {
         listGates.clear();
         Platform.runLater(()-> checkGates.setText("Catch Gates (" + listGates.size() + ")"));
         sendToClient(new HPacket("{in:Chat}{i:999}{s:\"The list of gates has been removed successfully\"}{i:0}{i:19}{i:0}{i:-1}"));
-        try{
-            _hMessage.setBlocked(true);
-        }catch (NullPointerException ignored){}
+        try{ _hMessage.setBlocked(true); }
+        catch (NullPointerException ignored){}
     }
 
     public void handleDeleteCoords() {
         coordTiles.clear();
         Platform.runLater(()-> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
         sendToClient(new HPacket("{in:Chat}{i:999}{s:\"The coords to walk to have been removed correctly\"}{i:0}{i:19}{i:0}{i:-1}"));
-        try{
-            _hMessage.setBlocked(true);
-        }catch (NullPointerException ignored){}
+        try{ _hMessage.setBlocked(true); }
+        catch (NullPointerException ignored){}
     }
 
     public void handleDeleteSwitches() {
         listSwitches.clear();
         Platform.runLater(()-> checkSwitch.setText("Switch Furnis (" + listSwitches.size() + ")"));
         sendToClient(new HPacket("{in:Chat}{i:999}{s:\"The list of switches has been removed successfully\"}{i:0}{i:19}{i:0}{i:-1}"));
-        try{
-            _hMessage.setBlocked(true);
-        }catch (NullPointerException ignored){}
+        try{ _hMessage.setBlocked(true); }
+        catch (NullPointerException ignored){}
     }
 
     public void handleRadioButtonsGate() {
         if(radioButtonOff.isSelected()){
-            if(timerGate.isRunning()){ timerGate.stop();}
+            if(timerGate.isRunning()) timerGate.stop();
         }
-        else if(radioButtonAuto.isSelected()){
-            timerGate.start();
-        }
+        else if(radioButtonAuto.isSelected()) timerGate.start();
         else if(radioButtonKey.isSelected()){
-            if(timerGate.isRunning()){ timerGate.stop();}
+            if(timerGate.isRunning()) timerGate.stop();
         }
     }
 
     public void handleRadioButtonsSwitch(ActionEvent actionEvent) {
         if(rbSwitchOff.isSelected()){
-            if(timerSwitch.isRunning()){ timerSwitch.stop();}
+            if(timerSwitch.isRunning()) timerSwitch.stop();
         }
-        else if(rbSwitchAuto.isSelected()){
-            timerSwitch.start();
-        }
+        else if(rbSwitchAuto.isSelected()) timerSwitch.start();
         else if(rbSwitchKey.isSelected()){
-            if(timerSwitch.isRunning()){ timerSwitch.stop();}
+            if(timerSwitch.isRunning()) timerSwitch.stop();
         }
     }
 
@@ -746,5 +712,4 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         Stage stage = (Stage) ((Node)event.getSource()).getScene().getWindow();
         stage.setIconified(true);
     }
-
 }
