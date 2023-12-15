@@ -15,8 +15,8 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<AnchorPane fx:id="anchorPane" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="616.0" prefWidth="374.0" style="-fx-background-color: #222222; -fx-background-radius: 10; -fx-effect: innershadow(gaussian, #d58512, 10, 0, 0, 3);" stylesheets="@GMazeRunner.css" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="GMazeRunner">
-    <TabPane layoutX="11.0" layoutY="35.0" prefHeight="621.0" prefWidth="363.0" tabClosingPolicy="UNAVAILABLE">
+<AnchorPane fx:id="anchorPane" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="600.0" prefWidth="374.0" style="-fx-background-color: #222222; -fx-background-radius: 10; -fx-effect: innershadow(gaussian, #d58512, 10, 0, 0, 3);" stylesheets="@GMazeRunner.css" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="GMazeRunner">
+    <TabPane layoutX="6.0" layoutY="52.0" prefHeight="621.0" prefWidth="363.0" tabClosingPolicy="UNAVAILABLE">
         <Tab text="Control">
             <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="580.0" prefWidth="363.0">
                 <Pane layoutX="31.0" layoutY="189.0" prefHeight="95.0" prefWidth="291.0" style="-fx-border-radius: 20px; -fx-border-color: #8888;">
@@ -104,5 +104,5 @@
     </TabPane>
     <ImageView fx:id="imageMinimize" fitHeight="29.0" fitWidth="49.0" layoutX="278.0" layoutY="1.0" onMouseClicked="#handleMouseMinimized" pickOnBounds="true" preserveRatio="true" />
     <ImageView fx:id="imageClose" fitHeight="29.0" fitWidth="49.0" layoutX="324.0" layoutY="1.0" onMouseClicked="#handleClickClose" pickOnBounds="true" preserveRatio="true" />
-   <Label fx:id="labelConnected" layoutX="14.0" layoutY="14.0" text="Connected to:" textFill="WHITE" />
+   <Text fx:id="txtConnectedTo" fill="WHITE" layoutX="22.0" layoutY="30.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Connected to:" wrappingWidth="330.0" />
 </AnchorPane>

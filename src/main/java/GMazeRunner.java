@@ -57,7 +57,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public CheckBox checkSwitch, checkCoords, checkGates, checkWalkToColorTile, checkThrough;
     public TextField textDelayGates, txtHotKeyGates, txtHotKeySwitches;
     public Text textIndex, textCoords;
-    public Label labelHotKeyGates, labelConnected;
+    public Label labelHotKeyGates;
+    public Text txtConnectedTo;
     TextInputControl lastInputControl = null;
 
     private HMessage _hMessage;
@@ -108,28 +109,21 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         for(TextInputControl element: txtFieldsHotKeys){
             if(element.isFocused()){    // si alguno de los controles tiene el control hace algo...
                 element.setText(keyText);
-                if(element.equals(txtHotKeyGates)){
+                if(element.equals(txtHotKeyGates))
                     Platform.runLater(()-> radioButtonKey.setText(String.format("Key [%s]", keyText)));
-                }
-                else if(element.equals(txtHotKeySwitches)){
+                else if(element.equals(txtHotKeySwitches))
                     Platform.runLater(()-> rbSwitchKey.setText(String.format("key [%s]", keyText)));
-                }
+
                 // lastInputControl = element;
                 Platform.runLater(()-> labelHotKeyGates.requestFocus());    // Le da el foco al label :O
             }
             else if(!element.isFocused()){  // Si ninguno de los elementos tiene el foco...
                 if(element.getText().equals(keyText)){
-                    if(radioButtonKey.isSelected()){
-                        if(keyText.equals(txtHotKeyGates.getText())){
-                            // When the key is released a new thread appears to stop the loop
-                            new Thread(this::passGate).start();
-                        }
-                    }
-                    if(rbSwitchKey.isSelected()){
-                        if(keyText.equals(txtHotKeySwitches.getText())){
-                            new Thread(this::hitSwitch).start();
-                        }
-                    }
+                    // When the key is released a new thread appears to stop the loop
+                    if(radioButtonKey.isSelected())
+                        if(keyText.equals(txtHotKeyGates.getText())) new Thread(this::passGate).start();
+                    if(rbSwitchKey.isSelected())
+                        if(keyText.equals(txtHotKeySwitches.getText())) new Thread(this::hitSwitch).start();
                 }
             }
         }
@@ -220,7 +214,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", this::interceptSlideObjectBundle); // When a furniture is moved with wired
 
         // It should be intercepted when a furni is moved with wired... (Pending for update, of course!)
-        intercept(HMessage.Direction.TOCLIENT, "WiredFurniMove", this::intercepWiredFurniMove);
+        intercept(HMessage.Direction.TOCLIENT, "WiredMovements", this::interceptWiredMovements);
         intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", this::interceptObjectUpdate); // When changes the coord of furniture with wired, i think
         intercept(HMessage.Direction.TOSERVER, "UseFurniture", this::interceptUseFurniture);
 
@@ -275,19 +269,27 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void intercepWiredFurniMove(HMessage hMessage) {
-        // {in:WiredFurniMove}{i:9}{i:16}{i:7}{i:18}{s:"0.15"}{s:"0.15"}{i:777439260}{i:500}{i:4}
-        int oldX = hMessage.getPacket().readInteger();
-        int oldY = hMessage.getPacket().readInteger();
-        int newX = hMessage.getPacket().readInteger();
-        int newY = hMessage.getPacket().readInteger();
-        String idk1 = hMessage.getPacket().readString();
-        String idk2 = hMessage.getPacket().readString();
-        int idWiredMoving = hMessage.getPacket().readInteger();
+    private void interceptWiredMovements(HMessage hMessage) {
+        // {in:WiredMovements}{i:2}{i:1}{i:12}{i:22}{i:12}{i:21}{s:"0.15"}{s:"0.15"}{i:783178091}{i:500}{i:0}{i:1}{i:14}{i:23}{i:15}{i:22}{s:"0.15001"}{s:"0.15001"}{i:1189005337}{i:500}{i:4}
+        int count = hMessage.getPacket().readInteger();
+        for(int i = 0; i < count; i++){
+            try{
+                int typeObject = hMessage.getPacket().readInteger(); // 0=User, 1=FloorItem, 2=WallItem, i think
+                int oldX = hMessage.getPacket().readInteger();  int oldY = hMessage.getPacket().readInteger();
+                int newX = hMessage.getPacket().readInteger();  int newY = hMessage.getPacket().readInteger();
+                String oldZ = hMessage.getPacket().readString(); // I think that is this
+                String newZ = hMessage.getPacket().readString();
+                int idWiredMoving = hMessage.getPacket().readInteger();
+                int animationTime = hMessage.getPacket().readInteger(); // I think x3
+                int furnitureDirection = hMessage.getPacket().readInteger();
 
-        // There are mazes where the gates move with wired, so its necessary to update the map
-        if (listGates.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
-        if(listSwitches.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
+                // There are mazes where the gates move with wired, so its necessary to update the map
+                if(listGates.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
+                if(listSwitches.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
     }
 
     private void interceptEnterOneWayDoor(HMessage hMessage) {
@@ -605,7 +607,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                     JSONObject item = (JSONObject)o;
                     nameToTypeIdFloor.put(item.getString("classname"), item.getInt("id"));
                 });
-                Platform.runLater(()-> labelConnected.setText("Connected to domain: " + url));
+                Platform.runLater(()-> txtConnectedTo.setText("Connected to domain: " + url));
                 System.out.println("Gamedata Retrieved!");
 
                 /* Code By Sirjonasxx
@@ -616,7 +618,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                         typeIdToNameWall.put(item.getInt("id"), item.getString("classname"));
                 }); */
             }catch (Exception e){
-                Platform.runLater(()-> labelConnected.setText("Error: " + e.getMessage()));
+                Platform.runLater(()-> txtConnectedTo.setText("Error: " + e.getMessage()));
             }
         }).start();
     }
