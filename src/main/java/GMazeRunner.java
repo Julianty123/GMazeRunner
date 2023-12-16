@@ -25,6 +25,8 @@ import org.jnativehook.keyboard.NativeKeyListener;
 import org.json.JSONObject;
 import org.apache.commons.io.IOUtils;       // Important library for use json!
 import org.json.JSONArray;
+
+import java.io.IOException;
 import java.net.URL;
 import javax.swing.Timer;
 import java.net.URLConnection;
@@ -59,6 +61,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public Text textIndex, textCoords;
     public Label labelHotKeyGates;
     public Text txtConnectedTo;
+    public TextField txtAPI;
+    public Button buttonTryConnect;
     TextInputControl lastInputControl = null;
 
     private HMessage _hMessage;
@@ -84,7 +88,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     private static final Set<String> setGates = new HashSet<>(Arrays.asList("one_way_door*1", "one_way_door*2", "one_way_door*3",
             "one_way_door*4", "one_way_door*5", "one_way_door*6", "one_way_door*7", "one_way_door*8", "one_way_door*9", "onewaydoor_c22_rosegold"));
     private static final Set<String> setSwitches = new HashSet<>(Arrays.asList("wf_floor_switch1", "wf_floor_switch2"));
-    private static final TreeMap<String, String> hostToDomain = new TreeMap<>();
+    private static final HashMap<String, String> hostToDomain = new HashMap<>();
     static {
         hostToDomain.put("game-es.habbo.com", "https://www.habbo.es/gamedata/furnidata_json/1");
         hostToDomain.put("game-br.habbo.com", "https://www.habbo.com.br/gamedata/furnidata_json/1");
@@ -119,11 +123,12 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             }
             else if(!element.isFocused()){  // Si ninguno de los elementos tiene el foco...
                 if(element.getText().equals(keyText)){
-                    // When the key is released a new thread appears to stop the loop
                     if(radioButtonKey.isSelected())
-                        if(keyText.equals(txtHotKeyGates.getText())) new Thread(this::passGate).start();
+                        if(keyText.equals(txtHotKeyGates.getText()))
+                            new Thread(this::passGate).start(); // When the key is released a new thread appears to stop the loop
                     if(rbSwitchKey.isSelected())
-                        if(keyText.equals(txtHotKeySwitches.getText())) new Thread(this::hitSwitch).start();
+                        if(keyText.equals(txtHotKeySwitches.getText()))
+                            new Thread(this::hitSwitch).start(); // When the key is released a new thread appears to stop the loop
                 }
             }
         }
@@ -146,12 +151,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         // radioButtonAuto.setStyle("-fx-text-fill: cyan;");
         // textConnected.setFill(Paint.valueOf("BLUE")); // Example: "GREEN" or "#008000"
 
-        // When its sent, get UserObject packet
-        sendToServer(new HPacket("{out:InfoRetrieve}"));
-        // When its sent, get UserIndex without restart room
-        sendToServer(new HPacket("{out:AvatarExpression}{i:0}"));
-        // When its sent, get wallitems, flooritems and other things without restart room
-        sendToServer(new HPacket("{out:GetHeightMap}"));
+        sendToServer(new HPacket("{out:InfoRetrieve}")); // When its sent, get UserObject packet
+        sendToServer(new HPacket("{out:AvatarExpression}{i:0}")); // When its sent, get UserIndex without restart room
     }
 
     @Override
@@ -191,7 +192,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         /*  primaryStage.setOnShowing(s -> {});
             primaryStage.setOnCloseRequest(e -> { });   */
 
-        onConnect((host, port, APIVersion, versionClient, client) -> getGameData(host)); // game-es.habbo.com
+        onConnect((host, port, APIVersion, versionClient, client) -> getGameData(host)); // host: game-es.habbo.com
 
         /* Cuando pasa el mouse por encima de un elemento, se cambia el color del texto
         radioButtonAuto.hoverProperty().addListener((observable, oldValue, newValue) -> {
@@ -242,11 +243,11 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     private void interceptObjectDataUpdate(HMessage hMessage) {
-        String furniId = hMessage.getPacket().readString();
+        String furnitureId = hMessage.getPacket().readString();
         int idk = hMessage.getPacket().readInteger();
         String stateColor = hMessage.getPacket().readString();
         for(ColorTile colorTile: listColorTiles){
-            if(colorTile.getTileId() == Integer.parseInt(furniId)){
+            if(colorTile.getTileId() == Integer.parseInt(furnitureId)){
                 colorTile.setStateColor(stateColor); // Al cambiar el estado del color, actualiza los parametros de la lista!
                 // System.out.println("id: " + colorTile.getTileId() + " ; stateColor: " + colorTile.getStateColor());
             }
@@ -254,19 +255,15 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     private void interceptObjectUpdate(HMessage hMessage) {
-        int FurniId = hMessage.getPacket().readInteger();
-        int NotUse = hMessage.getPacket().readInteger();
-        int xCoord = hMessage.getPacket().readInteger();
-        int yCoord = hMessage.getPacket().readInteger();
-        int Revolution = hMessage.getPacket().readInteger();
+        int furnitureId = hMessage.getPacket().readInteger();
+        hMessage.getPacket().readInteger();
+        int xFurniture = hMessage.getPacket().readInteger();
+        int yFurniture = hMessage.getPacket().readInteger();
+        int revolution = hMessage.getPacket().readInteger();
 
-        if (listGates.contains(FurniId)){ // There are mazes where the gates move with wired
-            floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord, yCoord)); // Updates the map (Very important)
-        }
-
-        if (listSwitches.contains(FurniId)){
-            floorItemsID_HPoint.replace(FurniId, new HPoint(xCoord,yCoord));
-        }
+        // There are mazes where the gates move with wired, so its necessary to update the map
+        if (listGates.contains(furnitureId)) floorItemsID_HPoint.replace(furnitureId, new HPoint(xFurniture, yFurniture));
+        if (listSwitches.contains(furnitureId)) floorItemsID_HPoint.replace(furnitureId, new HPoint(xFurniture,yFurniture));
     }
 
     private void interceptWiredMovements(HMessage hMessage) {
@@ -286,9 +283,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 // There are mazes where the gates move with wired, so its necessary to update the map
                 if(listGates.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
                 if(listSwitches.contains(idWiredMoving)) floorItemsID_HPoint.replace(idWiredMoving, new HPoint(newX,newY));
-            }catch (Exception e){
-                e.printStackTrace();
-            }
+            } catch (Exception e){ e.printStackTrace(); }
         }
     }
 
@@ -327,7 +322,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     private void interceptUserObject(HMessage hMessage){
-        // Gets Name and ID in order.
+        // Get name and id in order
         int YourID = hMessage.getPacket().readInteger();    yourName = hMessage.getPacket().readString();
     }
 
@@ -448,46 +443,43 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         HPacket hPacket = hMessage.getPacket();
         for (HEntityUpdate hEntityUpdate: HEntityUpdate.parse(hPacket)){
             try {
-                int CurrentIndex = hEntityUpdate.getIndex();  // HEntityUpdate class allows get UserIndex
-                if(yourIndex == CurrentIndex){
-                    // fix bug roller (important), also update the coords when you entry to the room
-                    int jokerX = hEntityUpdate.getTile().getX();    int jokerY = hEntityUpdate.getTile().getY();
+                int currentIndex = hEntityUpdate.getIndex();  // HEntityUpdate class allows get UserIndex
+                if(yourIndex != currentIndex) return;
 
-                    if(radioButtonWalk.isSelected()){
-                        currentX = hEntityUpdate.getTile().getX();  currentY = hEntityUpdate.getTile().getY();
-                    }
-                    else if(radioButtonRun.isSelected()){
-                        currentX = jokerX;  currentY = jokerY;      // fix bug roller, because the coordinate is not updated
-                        Platform.runLater(()-> textCoords.setText("Coords: ( " + jokerX + ", " + jokerY + " )"));   // fix bug roller (ignore)
+                // fix bug roller (important), also update the coords when you entry to the room
+                int jokerX = hEntityUpdate.getTile().getX();    int jokerY = hEntityUpdate.getTile().getY();
+                if(radioButtonWalk.isSelected()){
+                    currentX = hEntityUpdate.getTile().getX();  currentY = hEntityUpdate.getTile().getY();
+                }
+                else if(radioButtonRun.isSelected()){
+                    currentX = jokerX;  currentY = jokerY;      // fix bug roller, because the coordinate is not updated
+                    Platform.runLater(()-> textCoords.setText("Coords: ( " + jokerX + ", " + jokerY + " )"));   // fix bug roller (ignore)
 
-                        currentX = hEntityUpdate.getMovingTo().getX();  currentY = hEntityUpdate.getMovingTo().getY();
-                    }
-                    Platform.runLater(()-> textCoords.setText("Coords: ( " + currentX + ", " + currentY + " )"));
+                    currentX = hEntityUpdate.getMovingTo().getX();  currentY = hEntityUpdate.getMovingTo().getY();
+                }
+                Platform.runLater(()-> textCoords.setText("Coords: ( " + currentX + ", " + currentY + " )"));
 
-                    // Puedo agregar un listener en el futuro para poner delay al catch coords
+                // Puedo agregar un listener en el futuro para poner delay al catch coords
                         /* SimpleObjectProperty<HPoint> simpleObjectProperty = new SimpleObjectProperty<>(new HPoint(currentX, currentY, 0));
                         simpleObjectProperty.addListener((observable, oldValue, newValue) -> {
                             // Here code when the variable changes
                         }); */
 
-                    for(i = 0; i < coordTiles.size(); i++){
-                        if(currentX == coordTiles.get(i).getX() &&
-                                currentY == coordTiles.get(i).getY()){
-                            try {
-                                sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(i+1).getX(), coordTiles.get(i+1).getY())));
-                            }catch (Exception e)
-                            {
-                                coordTiles.clear();
-                                Platform.runLater(()-> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
-                            }
+                for(i = 0; i < coordTiles.size(); i++){
+                    if(currentX == coordTiles.get(i).getX() && currentY == coordTiles.get(i).getY()){
+                        try {
+                            sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(i+1).getX(), coordTiles.get(i+1).getY())));
+                        }catch (Exception e) {
+                            coordTiles.clear();
+                            Platform.runLater(()-> checkCoords.setText("Catch Coords (" + coordTiles.size() + ")"));
                         }
                     }
-                    // Runs when user avoid the tile successfully
-                    if(Objects.equals(flagWord, "FIREAVOID") && ((currentX == coordClickX && currentY == coordClickY))){
-                        flagWord = "";
-                        idTileAvoid = 0;
-                        sendToClient(new HPacket("{in:Chat}{i:999}{s:\"Congratulations! You have passed successfully.\"}{i:0}{i:23}{i:0}{i:-1}"));
-                    }
+                }
+                // Runs when user avoid the tile successfully
+                if(Objects.equals(flagWord, "FIREAVOID") && ((currentX == coordClickX && currentY == coordClickY))){
+                    flagWord = "";
+                    idTileAvoid = 0;
+                    sendToClient(new HPacket("{in:Chat}{i:999}{s:\"Congratulations! You have passed successfully.\"}{i:0}{i:23}{i:0}{i:-1}"));
                 }
             }
             catch (NullPointerException ignored) {} // .getMovingTo() get null pointer exception
@@ -496,16 +488,14 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void interceptObjects(HMessage hMessage){
         if(checkThrough.isSelected()) sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", true)));
+        listGates.clear();  listSwitches.clear();   listColorTiles.clear(); floorItemsID_HPoint.clear();
         try{
-            listGates.clear();  listSwitches.clear();   listColorTiles.clear();     // Lists deleted!
-            floorItemsID_HPoint.clear(); // Map deleted!
             for (HFloorItem hFloorItem: HFloorItem.parse(hMessage.getPacket())){
                 // System.out.println("id: " + hFloorItem.getId() + " ; typeId: " + hFloorItem.getTypeId());
                 HPoint hPoint = new HPoint(hFloorItem.getTile().getX(), hFloorItem.getTile().getY(), hFloorItem.getTile().getZ());
                 if(!floorItemsID_HPoint.containsKey(hFloorItem.getId())){ // Entra al condicional si no contiene la id especificada
                     floorItemsID_HPoint.put(hFloorItem.getId(), hPoint);
 
-                    // Mirar si se puede usar forEach o algo asi...
                     for(String classNameGate: setGates){
                         // Check if there are those unique id or type id is in the room (This depends on the hotel you are connected)
                         if(hFloorItem.getTypeId() == nameToTypeIdFloor.get(classNameGate)) listGates.add(hFloorItem.getId());
@@ -531,9 +521,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     public void handleFire() {
-        if(!coordTiles.isEmpty()){
+        if(!coordTiles.isEmpty())
             sendToServer(new HPacket(String.format("{out:MoveAvatar}{i:%s}{i:%s}", coordTiles.get(0).getX(), coordTiles.get(0).getY())));
-        }
     }
 
     // The server cannot be flooded with many packets or else they will be rejected, so the delay prevents that...
@@ -586,29 +575,47 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
+    public void handleTryConnect(){
+        getGameData(null);
+    }
+
     public void getGameData(String host) {
         new Thread(()->{
             try{
-//                https://www.habbo.es/gamedata/furnidata/1 -> Este link redirecciona a
-//                https://www.habbo.es/gamedata/furnidata/4b7d10b21957494413fdf42d51eca53b88bc0e12 -> Info organizado como lista []
-//                https://www.habbo.es/gamedata/furnidata_json/1 -> Info organizada como diccionario {}
-//                https://www.habbo.es/gamedata/furnidata_xml/1 -> Info organizada como XML <>
+//                https://www.habbo.es/gamedata/furnidata_json/1 -> This link redirects
+//                https://www.habbo.es/gamedata/furnidata_json/869b396d86c425d2244c23101660084e0dd992ff -> Info organized as a dictionary {}
+//                https://www.habbo.es/gamedata/furnidata/4b7d10b21957494413fdf42d51eca53b88bc0e12 -> Info organized as a list []
+//                https://www.habbo.es/gamedata/furnidata_xml/1 -> Info organized as XML <>
 
+//                Example API from Retro: https://images.habblet.city/leet-asset-bundles/gamedata/habblet_furni.json
+
+                buttonTryConnect.setDisable(true);
                 System.out.println("Getting GameData...");
-                String url = hostToDomain.get(host); // Throws exception if you are connecting to holos
+                String url;
+                if(hostToDomain.get(host) == null) {
+                    url = txtAPI.getText();
+                    System.out.println("Using custom API: " + url);
+                }
+                else {
+                    url = hostToDomain.get(host);
+                    System.out.println("Using default API: " + url);
+                }
+                txtAPI.setText(url);
+
                 URLConnection connection = (new URL(url)).openConnection();
                 connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.95 Safari/537.11");
                 connection.connect();
 
                 JSONObject jsonObj = new JSONObject(IOUtils.toString(connection.getInputStream(), StandardCharsets.UTF_8));
-
                 JSONArray floorJson = jsonObj.getJSONObject("roomitemtypes").getJSONArray("furnitype");
                 floorJson.forEach(o -> {
                     JSONObject item = (JSONObject)o;
                     nameToTypeIdFloor.put(item.getString("classname"), item.getInt("id"));
                 });
+
                 Platform.runLater(()-> txtConnectedTo.setText("Connected to domain: " + url));
                 System.out.println("Gamedata Retrieved!");
+                sendToServer(new HPacket("{out:GetHeightMap}")); // When its sent, get wallitems, flooritems and other things without restart room
 
                 /* Code By Sirjonasxx
                 JSONArray wallJson = object.getJSONObject("wallitemtypes").getJSONArray("furnitype");
@@ -617,9 +624,11 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                         nameToTypeidWall.put(item.getString("classname"), item.getInt("id"));
                         typeIdToNameWall.put(item.getInt("id"), item.getString("classname"));
                 }); */
-            }catch (Exception e){
+            }catch (IOException e){
                 Platform.runLater(()-> txtConnectedTo.setText("Error: " + e.getMessage()));
             }
+
+            buttonTryConnect.setDisable(false);
         }).start();
     }
 
@@ -656,7 +665,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void hitSwitch(){
         try{
-            // El orden de seleccion con los interruptores importa si se encuentran pegadas, pero aplicar un delay parece solucionarlo
+            // The order of selection with the switches matters if they are on the sides, but applying a delay seems to solve it.
             for(Integer switchId: listSwitches){ // Iterate through Java List
                 int coordXSwitch = floorItemsID_HPoint.get(switchId).getX();
                 int coordYSwitch = floorItemsID_HPoint.get(switchId).getY();

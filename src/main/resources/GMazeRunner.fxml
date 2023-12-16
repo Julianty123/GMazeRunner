@@ -15,8 +15,8 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<AnchorPane fx:id="anchorPane" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="600.0" prefWidth="374.0" style="-fx-background-color: #222222; -fx-background-radius: 10; -fx-effect: innershadow(gaussian, #d58512, 10, 0, 0, 3);" stylesheets="@GMazeRunner.css" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="GMazeRunner">
-    <TabPane layoutX="6.0" layoutY="52.0" prefHeight="621.0" prefWidth="363.0" tabClosingPolicy="UNAVAILABLE">
+<AnchorPane fx:id="anchorPane" onMouseDragged="#handleMouseDragged" onMousePressed="#handleMousePressed" prefHeight="634.0" prefWidth="407.0" style="-fx-background-color: #222222; -fx-background-radius: 10; -fx-effect: innershadow(gaussian, #d58512, 10, 0, 0, 3);" stylesheets="@GMazeRunner.css" xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="GMazeRunner">
+    <TabPane layoutX="2.0" layoutY="62.0" prefHeight="621.0" prefWidth="404.0" tabClosingPolicy="UNAVAILABLE">
         <Tab text="Control">
             <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="580.0" prefWidth="363.0">
                 <Pane layoutX="31.0" layoutY="189.0" prefHeight="95.0" prefWidth="291.0" style="-fx-border-radius: 20px; -fx-border-color: #8888;">
@@ -93,16 +93,19 @@
             <Text fill="WHITE" layoutX="12.0" layoutY="447.0" strokeType="OUTSIDE" strokeWidth="0.0" text="* &quot;:deleteswitches&quot;. Remove all switches added in Catch Gates." wrappingWidth="300.0" />
             </AnchorPane>
         </Tab>
-        <Tab text="HotKeys">
+        <Tab text="HotKeys &amp; API">
             <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
+            <Label layoutX="25.0" layoutY="190.0" text="Url:" textFill="WHITE" />
+            <TextField fx:id="txtAPI" layoutX="61.0" layoutY="185.0" prefHeight="31.0" prefWidth="290.0" />
                 <Label fx:id="labelHotKeyGates" layoutX="36.0" layoutY="52.0" text="HotKey for Gates:" textFill="WHITE" />
-                <Label layoutX="36.0" layoutY="134.0" text="HotKey for Switches:" textFill="WHITE" />
+                <Label layoutX="36.0" layoutY="113.0" text="HotKey for Switches:" textFill="WHITE" />
                 <TextField fx:id="txtHotKeyGates" layoutX="161.0" layoutY="47.0" prefHeight="31.0" prefWidth="41.0" />
-                <TextField fx:id="txtHotKeySwitches" layoutX="182.0" layoutY="129.0" prefHeight="31.0" prefWidth="41.0" />
+                <TextField fx:id="txtHotKeySwitches" layoutX="182.0" layoutY="108.0" prefHeight="31.0" prefWidth="41.0" />
+            <Button fx:id="buttonTryConnect" layoutX="145.0" layoutY="227.0" mnemonicParsing="false" onAction="#handleTryConnect" text="Try to connect" />
             </AnchorPane>
         </Tab>
     </TabPane>
-    <ImageView fx:id="imageMinimize" fitHeight="29.0" fitWidth="49.0" layoutX="278.0" layoutY="1.0" onMouseClicked="#handleMouseMinimized" pickOnBounds="true" preserveRatio="true" />
-    <ImageView fx:id="imageClose" fitHeight="29.0" fitWidth="49.0" layoutX="324.0" layoutY="1.0" onMouseClicked="#handleClickClose" pickOnBounds="true" preserveRatio="true" />
-   <Text fx:id="txtConnectedTo" fill="WHITE" layoutX="22.0" layoutY="30.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Connected to:" wrappingWidth="330.0" />
+    <ImageView fx:id="imageMinimize" fitHeight="29.0" fitWidth="49.0" layoutX="308.0" layoutY="1.0" onMouseClicked="#handleMouseMinimized" pickOnBounds="true" preserveRatio="true" />
+    <ImageView fx:id="imageClose" fitHeight="29.0" fitWidth="49.0" layoutX="358.0" layoutY="1.0" onMouseClicked="#handleClickClose" pickOnBounds="true" preserveRatio="true" />
+   <Text fx:id="txtConnectedTo" fill="WHITE" layoutX="14.0" layoutY="31.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Connected to:" wrappingWidth="365.0" />
 </AnchorPane>
