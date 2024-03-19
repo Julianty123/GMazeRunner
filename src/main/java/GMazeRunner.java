@@ -444,7 +444,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         for (HEntityUpdate hEntityUpdate: HEntityUpdate.parse(hPacket)){
             try {
                 int currentIndex = hEntityUpdate.getIndex();  // HEntityUpdate class allows get UserIndex
-                if(yourIndex != currentIndex) return;
+                if(yourIndex != currentIndex) continue;
 
                 // fix bug roller (important), also update the coords when you entry to the room
                 int jokerX = hEntityUpdate.getTile().getX();    int jokerY = hEntityUpdate.getTile().getY();
@@ -507,7 +507,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                             /*if( 5 == hPoint.getX() && (4 <= hPoint.getY() && 7 >= hPoint.getY())){ // Limita que furnis es para probar
 
                             }*/
-                        //Object colorNumber = hFloorItem.getStuff()[0]; // Example: 0 = White, 1 = Yellow, 2 = Orange...
+                        // Object colorNumber = hFloorItem.getStuff()[0]; // Example: 0 = White, 1 = Yellow, 2 = Orange...
                         // listColorTiles.add(new ColorTile(hFloorItem.getId(), hPoint, colorNumber));
                     }
                 }
@@ -631,10 +631,9 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void passGate(){
         try{
-            for(Integer gateId: listGates){ // for(j = 0; j < floorItemsID_HPoint.size(); j++)
-                int xGate = floorItemsID_HPoint.get(gateId).getX(); // floorItemsID_HPoint.get(listGates.get(gateId)).getX();
+            for(Integer gateId: listGates){
+                int xGate = floorItemsID_HPoint.get(gateId).getX();
                 int yGate = floorItemsID_HPoint.get(gateId).getY();
-
                 // ---Case example of coords --- //
                 // UserCoord (3, 6); GateCoord (4, 6)
                 if( currentX == xGate - 1 && currentY == yGate ){
