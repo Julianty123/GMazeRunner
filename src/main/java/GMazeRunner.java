@@ -635,7 +635,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 int xGate = floorItemsID_HPoint.get(gateId).getX();
                 int yGate = floorItemsID_HPoint.get(gateId).getY();
 
-                // Entry to conditional if when:
+                // Entry to conditional 'if' when:
                 // UserPosition (3, 6); GatePosition (4, 6) OR UserPosition (5, 6); GatePosition (4, 6)
                 // ||
                 // UserPosition (4, 7); GatePosition (4, 6) OR UserPosition (4, 5); GatePosition (4, 6)
