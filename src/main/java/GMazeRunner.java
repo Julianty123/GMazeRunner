@@ -634,25 +634,15 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             for(Integer gateId: listGates){
                 int xGate = floorItemsID_HPoint.get(gateId).getX();
                 int yGate = floorItemsID_HPoint.get(gateId).getY();
-                // ---Case example of coords --- //
-                // UserCoord (3, 6); GateCoord (4, 6)
-                if( currentX == xGate - 1 && currentY == yGate ){
+
+                // Entry to conditional if when:
+                // UserPosition (3, 6); GatePosition (4, 6) OR UserPosition (5, 6); GatePosition (4, 6)
+                // ||
+                // UserPosition (4, 7); GatePosition (4, 6) OR UserPosition (4, 5); GatePosition (4, 6)
+                int diffX = Math.abs(currentX - xGate);
+                int diffY = Math.abs(currentY - yGate);
+                if ((diffX == 1 && diffY == 0) || (diffX == 0 && diffY == 1)) {
                     sendToServer(new HPacket(String.format("{out:EnterOneWayDoor}{i:%s}", gateId)));
-                    Delay();
-                }
-                // UserCoord (5, 6); GateCoord (4, 6)
-                else if ( currentX == xGate + 1 && currentY == yGate ){
-                    sendToServer(new HPacket(String.format("{out:EnterOneWayDoor}{i:%s}", gateId)));
-                    Delay();
-                }
-                // UserCoord (4, 7); GateCoord (4, 6)
-                else if ( currentX == xGate && currentY == yGate + 1 ){
-                    sendToServer(new HPacket(String.format("{out:EnterOneWayDoor}{i:%s}", gateId)));
-                    Delay();
-                }
-                // UserCoord (4, 5); GateCoord (4, 6)
-                else if ( currentX == xGate && currentY == yGate - 1 ){
-                    sendToServer(new HPacket("EnterOneWayDoor", HMessage.Direction.TOSERVER, gateId));
                     Delay();
                 }
             }
