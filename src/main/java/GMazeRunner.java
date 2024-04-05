@@ -148,9 +148,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     public void userInitializer(){
         yourIndex = -1;
-        // radioButtonAuto.setStyle("-fx-text-fill: cyan;");
-        // textConnected.setFill(Paint.valueOf("BLUE")); // Example: "GREEN" or "#008000"
-
         sendToServer(new HPacket("{out:InfoRetrieve}")); // When its sent, get UserObject packet
         sendToServer(new HPacket("{out:AvatarExpression}{i:0}")); // When its sent, get UserIndex without restart room
     }
@@ -207,27 +204,27 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         checkThrough.setOnAction(event ->
                 sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected()))));
 
-        intercept(HMessage.Direction.TOCLIENT, "UserObject", this::interceptUserObject); // Response of packet InfoRetrieve
-        intercept(HMessage.Direction.TOCLIENT, "Expression", this::interceptExpression); // Response of packet AvatarExpression
-        intercept(HMessage.Direction.TOSERVER, "Chat", this::interceptChat);
-        intercept(HMessage.Direction.TOSERVER, "MoveAvatar", this::interceptMoveAvatar);
-        intercept(HMessage.Direction.TOSERVER, "EnterOneWayDoor", this::interceptEnterOneWayDoor);
-        intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", this::interceptSlideObjectBundle); // When a furniture is moved with wired
+        intercept(HMessage.Direction.TOCLIENT, "UserObject", this::InUserObject); // Response of packet InfoRetrieve
+        intercept(HMessage.Direction.TOCLIENT, "Expression", this::InExpression); // Response of packet AvatarExpression
+        intercept(HMessage.Direction.TOSERVER, "Chat", this::OutChat);
+        intercept(HMessage.Direction.TOSERVER, "MoveAvatar", this::OutMoveAvatar);
+        intercept(HMessage.Direction.TOSERVER, "EnterOneWayDoor", this::OutEnterOneWayDoor);
+        intercept(HMessage.Direction.TOCLIENT, "SlideObjectBundle", this::InSlideObjectBundle); // When furniture is moved with wired
 
-        // It should be intercepted when furniture is moved with wired... (Pending for update, of course!)
-        intercept(HMessage.Direction.TOCLIENT, "WiredMovements", this::interceptWiredMovements);
-        intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", this::interceptObjectUpdate); // When changes the coord of furniture with wired, i think
-        intercept(HMessage.Direction.TOSERVER, "UseFurniture", this::interceptUseFurniture);
+        // It should be intercepted when furniture is moved with wired...
+        intercept(HMessage.Direction.TOCLIENT, "WiredMovements", this::InWiredMovements);
+        intercept(HMessage.Direction.TOCLIENT, "ObjectUpdate", this::InObjectUpdate); // When changes the position of furniture with wired, i think
+        intercept(HMessage.Direction.TOSERVER, "UseFurniture", this::OutUseFurniture);
 
         // Intercepts when a furniture change the state through wired (for example a color tile)
-        intercept(HMessage.Direction.TOCLIENT, "ObjectDataUpdate", this::interceptObjectDataUpdate);
-        intercept(HMessage.Direction.TOCLIENT, "Objects", this::interceptObjects); // Intercepts when you entry to the room
+        intercept(HMessage.Direction.TOCLIENT, "ObjectDataUpdate", this::InObjectDataUpdate);
+        intercept(HMessage.Direction.TOCLIENT, "Objects", this::InObjects); // Intercepts when you entry to the room for load the furniture
 
-        intercept(HMessage.Direction.TOCLIENT, "Users", this::interceptUsers); // Intercept this packet when you enter or restart a room
-        intercept(HMessage.Direction.TOCLIENT, "UserUpdate", this::interceptUserUpdate);
+        intercept(HMessage.Direction.TOCLIENT, "Users", this::InUsers); // Intercept this packet when you enter or restart a room
+        intercept(HMessage.Direction.TOCLIENT, "UserUpdate", this::InUserUpdate);
     }
 
-    private void interceptUsers(HMessage hMessage) {
+    private void InUsers(HMessage hMessage) {
         HPacket hPacket = hMessage.getPacket();
         HEntity[] roomUsersList = HEntity.parse(hPacket);
         for (HEntity hEntity: roomUsersList){
@@ -242,7 +239,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptObjectDataUpdate(HMessage hMessage) {
+    private void InObjectDataUpdate(HMessage hMessage) {
         String furnitureId = hMessage.getPacket().readString();
         int idk = hMessage.getPacket().readInteger();
         String stateColor = hMessage.getPacket().readString();
@@ -254,7 +251,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptObjectUpdate(HMessage hMessage) {
+    private void InObjectUpdate(HMessage hMessage) {
         int furnitureId = hMessage.getPacket().readInteger();
         hMessage.getPacket().readInteger();
         int xFurniture = hMessage.getPacket().readInteger();
@@ -266,7 +263,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         if (listSwitches.contains(furnitureId)) floorItemsID_HPoint.replace(furnitureId, new HPoint(xFurniture,yFurniture));
     }
 
-    private void interceptWiredMovements(HMessage hMessage) {
+    private void InWiredMovements(HMessage hMessage) {
         // {in:WiredMovements}{i:2}{i:1}{i:12}{i:22}{i:12}{i:21}{s:"0.15"}{s:"0.15"}{i:783178091}{i:500}{i:0}{i:1}{i:14}{i:23}{i:15}{i:22}{s:"0.15001"}{s:"0.15001"}{i:1189005337}{i:500}{i:4}
         int count = hMessage.getPacket().readInteger();
         for(int i = 0; i < count; i++){
@@ -287,7 +284,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptEnterOneWayDoor(HMessage hMessage) {
+    private void OutEnterOneWayDoor(HMessage hMessage) {
         if(checkGates.isSelected()){
             int GateID = hMessage.getPacket().readInteger();
             if (!listGates.contains(GateID)){
@@ -298,7 +295,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptChat(HMessage hMessage) {
+    private void OutChat(HMessage hMessage) {
         if(primaryStage.isShowing()){
             _hMessage = hMessage; // public variable
             String message = hMessage.getPacket().readString();
@@ -313,7 +310,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptExpression(HMessage hMessage) {
+    private void InExpression(HMessage hMessage) {
         // First integer is index in room, second is animation id, i think
         if(primaryStage.isShowing() && yourIndex == -1){ // this could avoid any bug
             yourIndex = hMessage.getPacket().readInteger();
@@ -321,12 +318,12 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptUserObject(HMessage hMessage){
+    private void InUserObject(HMessage hMessage){
         // Get name and id in order
         int YourID = hMessage.getPacket().readInteger();    yourName = hMessage.getPacket().readString();
     }
 
-    private void interceptMoveAvatar(HMessage hMessage) {
+    private void OutMoveAvatar(HMessage hMessage) {
         HPacket hPacket = hMessage.getPacket(); // The data is added to a variable of type HPacket
         HPoint hPoint = new HPoint(hPacket.readInteger(), hPacket.readInteger());
         if(checkCoords.isSelected()){
@@ -378,23 +375,23 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptSlideObjectBundle(HMessage hMessage) {
+    private void InSlideObjectBundle(HMessage hMessage) {
         int oldX = hMessage.getPacket().readInteger();
         int oldY = hMessage.getPacket().readInteger();
         int newX = hMessage.getPacket().readInteger();
         int newY = hMessage.getPacket().readInteger();
         int NotUse = hMessage.getPacket().readInteger();
-        int idCurrentFurniMoving = hMessage.getPacket().readInteger();
-        String furniElevation = hMessage.getPacket().readString();
+        int furnitureId = hMessage.getPacket().readInteger();
+        String zFurniture = hMessage.getPacket().readString();
 
-        if (listGates.contains(idCurrentFurniMoving)) floorItemsID_HPoint.replace(idCurrentFurniMoving, new HPoint(newX,newY));
+        if (listGates.contains(furnitureId)) floorItemsID_HPoint.replace(furnitureId, new HPoint(newX,newY));
 
         for(ColorTile colorTile: listColorTiles){
-            if(colorTile.getTileId() == idCurrentFurniMoving)
-                colorTile.setTilePosition(new HPoint(newX, newY, Double.parseDouble(furniElevation))); // update the list parameters
+            if(colorTile.getTileId() == furnitureId)
+                colorTile.setTilePosition(new HPoint(newX, newY, Double.parseDouble(zFurniture))); // update the list parameters
         }
 
-        if( idTileAvoid == idCurrentFurniMoving && Objects.equals(flagWord, "FIREAVOID")){
+        if( idTileAvoid == furnitureId && Objects.equals(flagWord, "FIREAVOID")){
                 /* Tienen que cumplirse muchas condiciones, las coordenadas de la baldosa color ser diferentes a donde
                 se dara click yFrame ademas el usuario debe estar en la posicion indicada */
             if( oldX != newX && oldY == newY ){ // When the color tile moves horizontally
@@ -414,9 +411,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    private void interceptUseFurniture(HMessage hMessage) {
+    private void OutUseFurniture(HMessage hMessage) {
         int furnitureId = hMessage.getPacket().readInteger();
-//         System.out.println(floorItemsID_HPoint.get(furnitureId));
         if(flagWord.equals("TILEAVOID")){
             if(idTileAvoid == 0){
                 idTileAvoid = furnitureId;
@@ -439,7 +435,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     }
 
     // Yet exists the Spaghetti code, i need to organize some things...
-    public void interceptUserUpdate(HMessage hMessage){
+    public void InUserUpdate(HMessage hMessage){
         HPacket hPacket = hMessage.getPacket();
         for (HEntityUpdate hEntityUpdate: HEntityUpdate.parse(hPacket)){
             try {
@@ -486,7 +482,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         }
     }
 
-    public void interceptObjects(HMessage hMessage){
+    public void InObjects(HMessage hMessage){
         if(checkThrough.isSelected()) sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", true)));
         listGates.clear();  listSwitches.clear();   listColorTiles.clear(); floorItemsID_HPoint.clear();
         try{
@@ -613,15 +609,8 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 Platform.runLater(()-> txtConnectedTo.setText("Connected to domain: " + url));
                 System.out.println("Game-data Retrieved!");
                 sendToServer(new HPacket("{out:GetHeightMap}")); // When its sent, get wallitems, flooritems and other things without restart room
-
-                /* Code By Sirjonasxx
-                JSONArray wallJson = object.getJSONObject("wallitemtypes").getJSONArray("furnitype");
-                wallJson.forEach(o -> {
-                        JSONObject item = (JSONObject)o;
-                        nameToTypeidWall.put(item.getString("classname"), item.getInt("id"));
-                        typeIdToNameWall.put(item.getInt("id"), item.getString("classname"));
-                }); */
-            }catch (IOException e){
+            }
+            catch (IOException e){
                 Platform.runLater(()-> txtConnectedTo.setText("Error: " + e.getMessage()));
             }
 
