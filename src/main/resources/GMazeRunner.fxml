@@ -95,13 +95,14 @@
         </Tab>
         <Tab text="HotKeys &amp; API">
             <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="180.0" prefWidth="200.0">
-                <Label layoutX="25.0" layoutY="190.0" text="Url:" textFill="WHITE" />
-                <TextField fx:id="txtAPI" layoutX="61.0" layoutY="185.0" prefHeight="31.0" prefWidth="290.0" />
-                <Label fx:id="labelHotKeyGates" layoutX="36.0" layoutY="52.0" text="HotKey for Gates:" textFill="WHITE" />
-                <Label layoutX="36.0" layoutY="113.0" text="HotKey for Switches:" textFill="WHITE" />
-                <TextField fx:id="txtHotKeyGates" layoutX="161.0" layoutY="47.0" prefHeight="31.0" prefWidth="41.0" />
-                <TextField fx:id="txtHotKeySwitches" layoutX="182.0" layoutY="108.0" prefHeight="31.0" prefWidth="41.0" />
-                <Button fx:id="buttonTryConnect" layoutX="145.0" layoutY="227.0" mnemonicParsing="false" onAction="#handleTryConnect" text="Try to connect" />
+                <Label layoutX="25.0" layoutY="200.0" text="Url:" textFill="WHITE" />
+                <TextField fx:id="txtAPI" layoutX="61.0" layoutY="195.0" prefHeight="31.0" prefWidth="290.0" />
+                <Button fx:id="buttonTryConnect" layoutX="145.0" layoutY="237.0" mnemonicParsing="false" onAction="#handleTryConnect" text="Try to connect" />
+            <CheckBox fx:id="checkHotkey" layoutX="25.0" layoutY="41.0" mnemonicParsing="false" text="enable Hotkey" />
+                <Label fx:id="labelHotKeyGates" layoutX="61.0" layoutY="77.0" text="HotKey for Gates:" textFill="WHITE" />
+                <Label layoutX="61.0" layoutY="120.0" text="HotKey for Switches:" textFill="WHITE" />
+                <TextField fx:id="txtHotKeyGates" disable="true" layoutX="186.0" layoutY="72.0" prefHeight="31.0" prefWidth="41.0" />
+                <TextField fx:id="txtHotKeySwitches" disable="true" layoutX="207.0" layoutY="115.0" prefHeight="31.0" prefWidth="41.0" />
             </AnchorPane>
         </Tab>
     </TabPane>

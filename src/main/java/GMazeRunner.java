@@ -63,6 +63,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public Text txtConnectedTo;
     public TextField txtAPI;
     public Button buttonTryConnect;
+    public CheckBox checkHotkey;
     TextInputControl lastInputControl = null;
 
     private HMessage _hMessage;
@@ -146,19 +147,27 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
         } */
     }
 
-    public void userInitializer(){
+    @Override
+    protected void onShow() {   // Runs when you opens the extension
         yourIndex = -1;
         sendToServer(new HPacket("{out:InfoRetrieve}")); // When its sent, get UserObject packet
         sendToServer(new HPacket("{out:AvatarExpression}{i:0}")); // When its sent, get UserIndex without restart room
     }
 
     @Override
-    protected void onShow() {   // Runs when you opens the extension
-        userInitializer();
+    protected void onHide() {
+        yourIndex = -1;
+        checkThrough.setSelected(false);
+        sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
+
+        disableHotkey();
+    }
+
+    private void enableHotkey(){
         LogManager.getLogManager().reset();
         try {
             if(!GlobalScreen.isNativeHookRegistered()){
-                GlobalScreen.registerNativeHook();
+                GlobalScreen.registerNativeHook(); // When a hotkey is activated, the accents (`´) may not work properly
                 System.out.println("Hook enabled");
             }
         }
@@ -169,12 +178,12 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             System.exit(1);
         }
         GlobalScreen.addNativeKeyListener(GMazeRunner.this);
+
+        txtHotKeyGates.setDisable(false);    txtHotKeySwitches.setDisable(false);
+        checkHotkey.setText("disable Hotkey");
     }
 
-    @Override
-    protected void onHide() {
-        yourIndex = -1; checkThrough.setSelected(false);
-        sendToClient(new HPacket(String.format("{in:YouArePlayingGame}{b:%b}", checkThrough.isSelected())));
+    private void disableHotkey(){
         try {
             GlobalScreen.unregisterNativeHook();
             System.out.println("Hook disabled");
@@ -182,12 +191,22 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
             nativeHookException.printStackTrace();
         }
         GlobalScreen.removeNativeKeyListener(this);
+
+        txtHotKeyGates.setDisable(true);    txtHotKeySwitches.setDisable(true);
+        checkHotkey.setText("enable Hotkey");
     }
 
     @Override
     protected void initExtension() {
         /*  primaryStage.setOnShowing(s -> {});
             primaryStage.setOnCloseRequest(e -> { });   */
+
+        checkHotkey.setOnAction(event -> {
+            if(checkHotkey.isSelected())
+                enableHotkey();
+            else
+                disableHotkey();
+        });
 
         onConnect((host, port, APIVersion, versionClient, client) -> getGameData(host)); // host: game-es.habbo.com
 
