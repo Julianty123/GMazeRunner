@@ -635,7 +635,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 int xGate = floorItemsID_HPoint.get(gateId).getX();
                 int yGate = floorItemsID_HPoint.get(gateId).getY();
 
-                // Entry to conditional 'if' when:
+                // Entry to conditional 'if' when (Example):
                 // UserPosition (3, 6); GatePosition (4, 6) OR UserPosition (5, 6); GatePosition (4, 6)
                 // ||
                 // UserPosition (4, 7); GatePosition (4, 6) OR UserPosition (4, 5); GatePosition (4, 6)
@@ -656,24 +656,22 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 int xSwitch = floorItemsID_HPoint.get(switchId).getX();
                 int ySwitch = floorItemsID_HPoint.get(switchId).getY();
 
-                // ---Case example of coords --- //
+                // Entry to conditional 'if' when (Example):
                 // UserCoord (3, 6); SwitchCoord (4, 6) OR UserCoord (5, 6); SwitchCoord (4, 6)
-                if((currentX == xSwitch - 1 && currentY == ySwitch) || (currentX == xSwitch + 1 && currentY == ySwitch)){
-                    sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
-                    Delay();
-                }
+                // ||
                 // UserCoord (4, 5); SwitchCoord (4, 6) OR UserCoord (4, 7); SwitchCoord (4, 6)
-                else if((currentX == xSwitch && currentY == ySwitch - 1) || (currentX == xSwitch && currentY == ySwitch + 1)){
+                int diffX = Math.abs(currentX - xSwitch);
+                int diffY = Math.abs(currentY - ySwitch);
+                if ((diffX == 1 && diffY == 0) || (diffX == 0 && diffY == 1)) {
                     sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
                     Delay();
                 }
+
+                // Entry to conditional 'if' when (Example):
                 // UserCoord (3, 5); SwitchCoord (4, 6) OR UserCoord (5, 7); SwitchCoord (4, 6) [LEFT DIAGONAL]
-                else if((currentX == xSwitch - 1 && currentY == ySwitch - 1) || (currentX == xSwitch + 1 && currentY == ySwitch + 1)){
-                    sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
-                    Delay();
-                }
+                // ||
                 // UserCoord (5, 5); SwitchCoord (4, 6) OR UserCoord (3, 7); SwitchCoord (4, 6) [RIGHT DIAGONAL]
-                else if((currentX == xSwitch + 1 && currentY == ySwitch - 1) || (currentX == xSwitch - 1 && currentY == ySwitch + 1)){
+                if (diffX == 1 && diffY == 1) {
                     sendToServer(new HPacket(String.format("{out:UseFurniture}{i:%s}{i:0}", switchId)));
                     Delay();
                 }
