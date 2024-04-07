@@ -31,6 +31,9 @@ Here you can find all the information to develop your first extension: https://g
    [Java 8]: <https://www.java.com/es/download/ie_manual.jsp>
    [Java JDK 8]: <https://www.oracle.com/co/java/technologies/javase/javase8-archive-downloads.html>
 
+### Caution
+With the new wired and furniture updates it's very likely that the extension will not work as it should.
+
 ### Notice
 I think I'm going to stop the development of this extension because there is already a user who wants to take advantage of this to make money, I consider myself the legitimate owner of this idea, I don't want to be pretentious but thanks to me good progress has been made in automation , I am quite sure that soon there will be more news with this era of artificial intelligence, if you like my extensions, thanks for supporting me, a promising future is coming not only in this virtual environment
 
