@@ -64,7 +64,6 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
     public TextField txtAPI;
     public Button buttonTryConnect;
     public CheckBox checkHotkey;
-    TextInputControl lastInputControl = null;
 
     private HMessage _hMessage;
     public List<HPoint> listPositionTiles = new LinkedList<>();
@@ -119,8 +118,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
                 else if(element.equals(txtHotKeySwitches))
                     Platform.runLater(()-> rbSwitchKey.setText(String.format("key [%s]", keyText)));
 
-                // lastInputControl = element;
-                Platform.runLater(()-> labelHotKeyGates.requestFocus());    // Le da el foco al label :O
+                Platform.runLater(()-> labelHotKeyGates.requestFocus());    // Avoids the bug adding two letters in the text field
             }
             else if(!element.isFocused()){  // Si ninguno de los elementos tiene el foco...
                 if(element.getText().equals(keyText)){
@@ -137,14 +135,7 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     @Override // Se ejecuta cuando la tecla se deja de presionar
     public void nativeKeyReleased(NativeKeyEvent nativeKeyEvent) {
-        /* String keyText = NativeKeyEvent.getKeyText(nativeKeyEvent.getKeyCode());
-        TextInputControl[] txtFieldsHotKeys = new TextInputControl[]{txtHotKeyGates, txtHotKeySwitches};
-        for(TextInputControl element: txtFieldsHotKeys) {
-            if(element.equals(lastInputControl)){
-                element.setText(keyText);   lastInputControl = null;
-                break;
-            }
-        } */
+        Platform.runLater(()-> labelHotKeyGates.requestFocus());    // Avoids the bug adding two letters in the text field
     }
 
     @Override
