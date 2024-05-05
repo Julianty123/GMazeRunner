@@ -135,7 +135,13 @@ public class GMazeRunner extends ExtensionForm implements NativeKeyListener {
 
     @Override // Se ejecuta cuando la tecla se deja de presionar
     public void nativeKeyReleased(NativeKeyEvent nativeKeyEvent) {
-        Platform.runLater(()-> labelHotKeyGates.requestFocus());    // Avoids the bug adding two letters in the text field
+        TextInputControl[] txtFieldsHotKeys = new TextInputControl[]{txtHotKeyGates, txtHotKeySwitches};
+        for(TextInputControl element: txtFieldsHotKeys){
+            if(element.isFocused()){
+                Platform.runLater(()->
+                        labelHotKeyGates.requestFocus());    // Avoids the bug adding two letters in the text field
+            }
+        }
     }
 
     @Override
