@@ -42,5 +42,5 @@ P.S.: don't pay for that extension so far it's almost impossible to have a scrip
 ### ❤️ Support me ❤️
 If you like my work, please consider supporting me. It will help me create more projects and continue updating them.
 
-[![ko-fi](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://www.buymeacoffee.com/julianty)
+<a href="https://www.buymeacoffee.com/julianty" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="70" ></a>
 [![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://www.buymeacoffee.com/julianty)
